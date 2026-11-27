@@ -616,6 +616,16 @@ data class LiveTvSettings(
     val showPlaylistInInfo: Boolean = true,
     /** The vertical line marking the current time in the guide. */
     val showNowLine: Boolean = true,
+    /** Modern Interface: the flat charcoal look (neutral grays, rounder cards) in the guide and the Sports hub. */
+    val modernInterface: Boolean = false,
+    /** Modern Interface motion: "smooth" (focus scale and fades), "light" (fades only) or "off". */
+    val modernMotion: String = "smooth",
+    /** Modern Interface: the glow from each team's colour on the match cards. */
+    val modernCardGradient: Boolean = true,
+    /** Modern Interface full screen info bar: "fade", "panel" or "full". */
+    val modernFullBar: String = "fade",
+    /** Modern Interface: a country flag before each channel category that names a country. */
+    val modernFlags: Boolean = true,
     /** Send Dolby / DTS audio untouched to the TV or speaker (off: the app decodes it). */
     val audioPassthrough: Boolean = true,
     /** Show posters for what's on; off: just the channel logo (no poster lookups at all). */

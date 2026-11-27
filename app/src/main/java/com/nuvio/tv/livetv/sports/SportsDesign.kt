@@ -63,6 +63,9 @@ import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImage
 import com.nuvio.tv.livetv.ui.ChannelLogo
 import com.nuvio.tv.livetv.ui.LiveText
+import com.nuvio.tv.livetv.modern.ModernMatchCard
+import com.nuvio.tv.livetv.modern.ModernPrefs
+import com.nuvio.tv.livetv.ui.ModernLook
 import com.nuvio.tv.livetv.ui.formatClock
 import com.nuvio.tv.ui.theme.NuvioTheme
 import kotlinx.coroutines.delay
@@ -80,17 +83,17 @@ internal object SportsLook {
     // Translucent and a shade lighter (not flat near-black), so cards read as glass over the
     // hub's own background, matching the full-screen player's bar and gear panel. Alpha alone
     // barely shows against a background this close in tone, so the edge is bumped up too.
-    val Card = Color(0xAD1E212C)
-    val CardRaised = Color(0xB8282C3A)
-    val Border = Color.White.copy(alpha = 0.20f)
-    val Divider = Color.White.copy(alpha = 0.08f)
-    val Dim = Color(0xFF8B90A0)
-    val Faint = Color(0xFF5D6170)
+    val Card get() = if (ModernLook.on) ModernLook.Card else Color(0xAD1E212C)
+    val CardRaised get() = if (ModernLook.on) ModernLook.CardRaised else Color(0xB8282C3A)
+    val Border get() = if (ModernLook.on) ModernLook.Divider else Color.White.copy(alpha = 0.20f)
+    val Divider get() = if (ModernLook.on) ModernLook.Divider else Color.White.copy(alpha = 0.08f)
+    val Dim get() = if (ModernLook.on) ModernLook.TextTertiary else Color(0xFF8B90A0)
+    val Faint get() = if (ModernLook.on) ModernLook.TextDisabled else Color(0xFF5D6170)
     val Live = Color(0xFFE53935)
     val Flash = Color(0xFFFFD54A)
-    val Ink = Color(0xFF0B0C10)
-    val Shape = RoundedCornerShape(14.dp)
-    val SmallShape = RoundedCornerShape(10.dp)
+    val Ink get() = if (ModernLook.on) ModernLook.Background else Color(0xFF0B0C10)
+    val Shape get() = RoundedCornerShape(if (ModernLook.on) 18.dp else 14.dp)
+    val SmallShape get() = RoundedCornerShape(if (ModernLook.on) 14.dp else 10.dp)
 
     /** Scores with every digit the same width, so 9 → 10 doesn't shift the row. */
     val ScoreStyle = TextStyle(fontFeatureSettings = "tnum", fontWeight = FontWeight.Black)
@@ -135,7 +138,7 @@ internal fun Modifier.sportsFrame(
     val shape = RoundedCornerShape(radius)
     val ring = NuvioTheme.focusRing.brush()
     return this
-        .graphicsLayer { val s = if (focused) 1.02f else 1f; scaleX = s; scaleY = s }
+        .graphicsLayer { val s = if (focused && (!ModernLook.on || ModernPrefs.scaleOn)) 1.02f else 1f; scaleX = s; scaleY = s }
         .clip(shape)
         .background(background)
         // The border on top of everything inside (team bands reach the edges).
@@ -324,7 +327,7 @@ internal fun TeamBand(
     Row(
         modifier
             .fillMaxWidth()
-            .background(Brush.horizontalGradient(0f to c.copy(alpha = 0.92f), 0.7f to c.copy(alpha = 0.28f), 1f to c.copy(alpha = 0.05f)))
+            .then(if (ModernLook.on && !ModernPrefs.cardGradient) Modifier else Modifier.background(Brush.horizontalGradient(0f to c.copy(alpha = 0.92f), 0.7f to c.copy(alpha = 0.28f), 1f to c.copy(alpha = 0.05f))))
             .padding(start = 9.dp, end = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -429,6 +432,32 @@ internal fun GameCard(
     val sport = league?.sport ?: Sport.OTHER
     val sides = ev.ordered(sport)
     val premium = sides.size != 2 && eventLook(ev, league).premium
+    // Modern Interface: a game between two sides is the design's match card (same focus, click and
+    // long press as below; events without two sides keep the band layout, restyled by SportsLook).
+    if (ModernLook.on && sides.size == 2) {
+        Box(
+            modifier
+                .fillMaxWidth()
+                .onFocusChanged { focused = it.isFocused; if (it.isFocused) GameFocus.onGame?.invoke(ev) }
+                .combinedClickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onClick,
+                    onLongClick = onLongClick
+                )
+        ) {
+            ModernMatchCard(
+                ev = ev,
+                use24h = use24h,
+                hideScores = hideScores,
+                focused = focused,
+                modifier = Modifier.fillMaxWidth(),
+                playing = playing,
+                follows = follows
+            )
+        }
+        return
+    }
     Box(
         modifier
             .fillMaxWidth()

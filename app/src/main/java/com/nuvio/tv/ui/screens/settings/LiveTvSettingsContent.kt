@@ -1147,6 +1147,39 @@ internal fun LiveTvSettingsContent(
                         { update { it.copy(showFrameRate = !it.showFrameRate) } }
                     )
                     SubHeading(context.getString(R.string.iptv_settings_look))
+                    SettingsToggleRow(
+                        context.getString(R.string.iptv_settings_modern_interface),
+                        context.getString(R.string.iptv_settings_modern_interface_summary),
+                        s.modernInterface,
+                        { update { it.copy(modernInterface = !it.modernInterface) } }
+                    )
+                    // The Modern Interface's own options: shown only while it is on.
+                    if (s.modernInterface) {
+                        SettingsActionRow(
+                            title = context.getString(R.string.iptv_settings_modern_motion),
+                            subtitle = context.getString(R.string.iptv_settings_modern_motion_summary),
+                            value = com.nuvio.tv.livetv.modern.modernOptionLabel(context, s.modernMotion),
+                            onClick = { update { it.copy(modernMotion = com.nuvio.tv.livetv.modern.modernNext(it.modernMotion, listOf("smooth", "light", "off"))) } }
+                        )
+                        SettingsToggleRow(
+                            context.getString(R.string.iptv_settings_modern_card_gradient),
+                            context.getString(R.string.iptv_settings_modern_card_gradient_summary),
+                            s.modernCardGradient,
+                            { update { it.copy(modernCardGradient = !it.modernCardGradient) } }
+                        )
+                        SettingsActionRow(
+                            title = context.getString(R.string.iptv_settings_modern_full_bar),
+                            subtitle = context.getString(R.string.iptv_settings_modern_full_bar_summary),
+                            value = com.nuvio.tv.livetv.modern.modernOptionLabel(context, s.modernFullBar),
+                            onClick = { update { it.copy(modernFullBar = com.nuvio.tv.livetv.modern.modernNext(it.modernFullBar, listOf("fade", "panel", "full"))) } }
+                        )
+                        SettingsToggleRow(
+                            context.getString(R.string.iptv_settings_modern_flags),
+                            context.getString(R.string.iptv_settings_modern_flags_summary),
+                            s.modernFlags,
+                            { update { it.copy(modernFlags = !it.modernFlags) } }
+                        )
+                    }
                     SettingsActionRow(
                         title = context.getString(R.string.iptv_settings_guide_sports_background),
                         subtitle = context.getString(R.string.iptv_settings_the_backdrop_behind_the_tv_guide_and_the),

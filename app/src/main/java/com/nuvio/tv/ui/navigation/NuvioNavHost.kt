@@ -1683,7 +1683,8 @@ private fun PlaybackNavHost(
                 }
             }
             // Live TV fork: the Sports page (scores, schedules, which of your channels show each game).
-            if (sportsShown) com.nuvio.tv.livetv.sports.SportsScreen(
+            // Modern Interface (Settings → Live TV → Look) restyles the grays here; off = no change.
+            if (sportsShown) com.nuvio.tv.livetv.ui.ModernGuideTheme { com.nuvio.tv.livetv.sports.SportsScreen(
                 onOpenLive = { com.nuvio.tv.livetv.sports.openLiveTvFullscreen(navController) },
                 onOpenMultiview = { channelKey ->
                     com.nuvio.tv.livetv.sports.SportsWatchLaunch.request(2, channelKey)
@@ -1708,7 +1709,7 @@ private fun PlaybackNavHost(
                         }
                     }
                 }
-            )
+            ) }
         }
 
         forkPageComposable(Screen.OnDemand.route) {

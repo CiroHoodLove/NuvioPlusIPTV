@@ -1,0 +1,89 @@
+Starting a Gradle Daemon (subsequent builds will be faster)
+> Task :vpn-core:compileJava UP-TO-DATE
+> Task :vpn-core:processResources NO-SOURCE
+> Task :vpn-core:classes UP-TO-DATE
+> Task :vpn-core:jar UP-TO-DATE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:downloadAudioSyncRuntime UP-TO-DATE
+> Task :app:buildUsenetarm64v8a
+> Task :app:buildUsenetarmeabiv7a
+> Task :app:buildUsenetx86
+> Task :app:buildUsenetx8664
+> Task :app:preBuild
+> Task :app:preFullDebugBuild
+> Task :app:generateFullDebugBuildConfig UP-TO-DATE
+> Task :vpn-android:compileHttpTunnel386 UP-TO-DATE
+> Task :vpn-android:compileHttpTunnelAmd64 UP-TO-DATE
+> Task :vpn-android:compileHttpTunnelArm UP-TO-DATE
+> Task :vpn-android:compileHttpTunnelArm64 UP-TO-DATE
+> Task :vpn-android:preBuild UP-TO-DATE
+> Task :vpn-android:preDebugBuild UP-TO-DATE
+> Task :vpn-android:writeDebugAarMetadata UP-TO-DATE
+> Task :app:checkFullDebugAarMetadata UP-TO-DATE
+> Task :vpn-android:processDebugNavigationResources UP-TO-DATE
+> Task :app:processFullDebugNavigationResources UP-TO-DATE
+> Task :app:compileFullDebugNavigationResources UP-TO-DATE
+> Task :app:generateFullDebugResValues UP-TO-DATE
+> Task :vpn-android:generateDebugResValues UP-TO-DATE
+> Task :vpn-android:generateDebugResources UP-TO-DATE
+> Task :vpn-android:packageDebugResources UP-TO-DATE
+> Task :app:mapFullDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateFullDebugResources UP-TO-DATE
+> Task :app:mergeFullDebugResources UP-TO-DATE
+> Task :app:packageFullDebugResources UP-TO-DATE
+> Task :app:parseFullDebugLocalResources UP-TO-DATE
+> Task :app:createFullDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksFullDebug UP-TO-DATE
+> Task :vpn-android:extractDeepLinksDebug UP-TO-DATE
+> Task :vpn-android:processDebugManifest UP-TO-DATE
+> Task :app:processFullDebugMainManifest UP-TO-DATE
+> Task :app:processFullDebugManifest UP-TO-DATE
+> Task :app:processFullDebugManifestForPackage UP-TO-DATE
+> Task :vpn-android:compileDebugLibraryResources UP-TO-DATE
+> Task :vpn-android:parseDebugLocalResources UP-TO-DATE
+> Task :vpn-android:generateDebugRFile UP-TO-DATE
+> Task :app:processFullDebugResources UP-TO-DATE
+> Task :vpn-android:javaPreCompileDebug UP-TO-DATE
+> Task :vpn-android:compileDebugJavaWithJavac UP-TO-DATE
+> Task :vpn-android:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :app:kspFullDebugKotlin UP-TO-DATE
+> Task :app:compileFullDebugKotlin
+
+The message received from the daemon indicates that the daemon has disappeared.
+Build request sent: Build{id=566d7c53-fc2a-42b0-958b-cd007b33d4ee, currentDir=/workspaces/NuvioPlusIPTV}
+Attempting to read last messages from the daemon log...
+Daemon pid: 22860
+  log file: /home/codespace/.gradle/daemon/8.13/daemon-22860.out.log
+----- Last 20 lines from daemon log file - daemon-22860.out.log -----
+2026-11-27T01:44:47.940+0000 [DEBUG] [org.gradle.launcher.daemon.server.DefaultDaemonConnection] thread 19: Received non-IO message from client: Build{id=566d7c53-fc2a-42b0-958b-cd007b33d4ee, currentDir=/workspaces/NuvioPlusIPTV}
+2026-11-27T01:44:47.943+0000 [INFO] [org.gradle.launcher.daemon.server.DefaultIncomingConnectionHandler] Received command: Build{id=566d7c53-fc2a-42b0-958b-cd007b33d4ee, currentDir=/workspaces/NuvioPlusIPTV}.
+2026-11-27T01:44:47.943+0000 [DEBUG] [org.gradle.launcher.daemon.server.DefaultIncomingConnectionHandler] Starting executing command: Build{id=566d7c53-fc2a-42b0-958b-cd007b33d4ee, currentDir=/workspaces/NuvioPlusIPTV} with connection: socket connection from /127.0.0.1:40487 to /127.0.0.1:52958.
+2026-11-27T01:44:47.952+0000 [DEBUG] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] Command execution: started DaemonCommandExecution[command = Build{id=566d7c53-fc2a-42b0-958b-cd007b33d4ee, currentDir=/workspaces/NuvioPlusIPTV}, connection = DefaultDaemonConnection: socket connection from /127.0.0.1:40487 to /127.0.0.1:52958] after 0.004383333333333334 minutes of idle
+2026-11-27T01:44:47.952+0000 [INFO] [org.gradle.launcher.daemon.server.DaemonRegistryUpdater] Marking the daemon as busy, address: [228e9dc6-1e5f-4564-8a0a-6e76b01db929 port:40487, addresses:[localhost/127.0.0.1]]
+2026-11-27T01:44:47.954+0000 [DEBUG] [org.gradle.launcher.daemon.registry.PersistentDaemonRegistry] Marking busy by address: [228e9dc6-1e5f-4564-8a0a-6e76b01db929 port:40487, addresses:[localhost/127.0.0.1]]
+2026-11-27T01:44:47.955+0000 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Waiting to acquire exclusive lock on daemon addresses registry.
+2026-11-27T01:44:47.955+0000 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Lock acquired on daemon addresses registry.
+2026-11-27T01:44:47.958+0000 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Releasing lock on daemon addresses registry.
+2026-11-27T01:44:47.959+0000 [DEBUG] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] resetting idle timer
+2026-11-27T01:44:47.964+0000 [DEBUG] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] daemon is running. Sleeping until state changes.
+2026-11-27T01:44:47.966+0000 [INFO] [org.gradle.launcher.daemon.server.exec.StartBuildOrRespondWithBusy] Daemon is about to start building Build{id=566d7c53-fc2a-42b0-958b-cd007b33d4ee, currentDir=/workspaces/NuvioPlusIPTV}. Dispatching build started information...
+2026-11-27T01:44:47.966+0000 [DEBUG] [org.gradle.launcher.daemon.server.SynchronizedDispatchConnection] thread 21: dispatching org.gradle.launcher.daemon.protocol.BuildStarted@320cf567
+2026-11-27T01:44:47.970+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.EstablishBuildEnvironment] Configuring env variables: [PATH, DOTNET_USE_POLLING_FILE_WATCHER, CODESPACES, CODESPACE_VSCODE_FOLDER, PROMPT_DIRTRIM, VSCODE_GIT_IPC_HANDLE, VSCODE_PYTHON_AUTOACTIVATE_GUARD, ANDROID_HOME, PIPX_HOME, HUGO_DIR, MAVEN_ROOT, GITHUB_API_URL, MAVEN_HOME, ORYX_PREFER_USER_INSTALLED_SDKS, COLORTERM, DOCKER_BUILDKIT, SDKMAN_DIR, VSCODE_GIT_ASKPASS_NODE, PWD, TERM_PROGRAM_VERSION, GIT_ASKPASS, SDKMAN_BROKER_API, CONDA_SCRIPT, HUGO_ROOT, NVM_CD_FLAGS, SHELL, LESSOPEN, SDKMAN_CANDIDATES_API, GITHUB_TOKEN, GITHUB_GRAPHQL_URL, DEBIAN_FLAVOR, GOPATH, OLDPWD, GITHUB_CODESPACE_TOKEN, ContainerVersion, PHP_PATH, RAILS_DEVELOPMENT_HOSTS, GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN, DOTNET_ROOT, PYTHON_ROOT, NVM_SYMLINK_CURRENT, DEBUGINFOD_URLS, GITHUB_USER, LS_COLORS, SHLVL, PIPX_BIN_DIR, ORYX_ENV_TYPE, DOTNET_RUNNING_IN_CONTAINER, LESSCLOSE, BROWSER, MANPATH, GITHUB_SERVER_URL, JAVA_ROOT, CLOUDENV_ENVIRONMENT_ID, JAVA_HOME, GIT_EDITOR, ORYX_SDK_STORAGE_BASE_URL, TERM, LANG, FEATURE_SPARK_POST_COMMIT_CREATE_ITERATION, GRADLE_HOME, VSCODE_GIT_ASKPASS_MAIN, INTERNAL_VSCS_TARGET_URL, NVM_INC, GITHUB_REPOSITORY, VSCODE_IPC_HOOK_CLI, CONDA_DIR, VSCODE_GIT_ASKPASS_EXTRA_ARGS, SDKMAN_CANDIDATES_DIR, _, NUGET_XMLDOC_MODE, RUBY_HOME, NODE_ROOT, NVM_DIR, ENABLE_DYNAMIC_INSTALL, TERM_PROGRAM, SHELL_LOGGED_IN, DOTNET_SKIP_FIRST_TIME_EXPERIENCE, PYTHON_PATH, RBENV_ROOT, PYTHONIOENCODING, PHP_ROOT, SDKMAN_PLATFORM, ANDROID_SDK_ROOT, RUBY_ROOT, USER, GOROOT, ORYX_DIR, JUPYTERLAB_PATH, HOSTNAME, CODESPACE_NAME, NVM_BIN, NPM_GLOBAL, HOME, DYNAMIC_INSTALL_ROOT_DIR]
+2026-11-27T01:44:47.986+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.LogToClient] About to start relaying all logs to the client via the connection.
+2026-11-27T01:44:47.988+0000 [INFO] [org.gradle.launcher.daemon.server.exec.LogToClient] The client will now receive all logging from the daemon (pid: 22860). The daemon log file: /home/codespace/.gradle/daemon/8.13/daemon-22860.out.log
+2026-11-27T01:44:47.993+0000 [INFO] [org.gradle.launcher.daemon.server.exec.LogAndCheckHealth] Starting build in new daemon [memory: 4 GiB]
+2026-11-27T01:44:48.000+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.ExecuteBuild] The daemon has started executing the build.
+2026-11-27T01:44:48.002+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.ExecuteBuild] Executing build with daemon context: DefaultDaemonContext[uid=ac05f330-1967-42fa-b70c-db03c20aee95,javaHome=/usr/lib/jvm/java-17-openjdk-amd64,javaVersion=17,javaVendor=Ubuntu,daemonRegistryDir=/home/codespace/.gradle/daemon,pid=22860,idleTimeout=10800000,priority=NORMAL,applyInstrumentationAgent=true,nativeServicesMode=ENABLED,daemonOpts=-XX:MaxMetaspaceSize=1g,-XX:+HeapDumpOnOutOfMemoryError,-Xmx4g,-Dfile.encoding=UTF-8,-Duser.country,-Duser.language=en,-Duser.variant]
+Daemon vm is shutting down... The daemon has exited normally or was terminated in response to a user interrupt.----- End of the daemon log -----
+
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Gradle build daemon disappeared unexpectedly (it may have been killed or may have crashed)
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.

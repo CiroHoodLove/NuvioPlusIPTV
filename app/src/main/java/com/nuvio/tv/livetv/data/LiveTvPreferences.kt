@@ -194,6 +194,11 @@ class LiveTvPreferences @Inject constructor(
         val browseByChannelName = booleanPreferencesKey("browse_by_channel_name")
         val showPlaylistInInfo = booleanPreferencesKey("show_playlist_in_info")
         val showNowLine = booleanPreferencesKey("show_now_line")
+        val modernInterface = booleanPreferencesKey("modern_interface")
+        val modernMotion = stringPreferencesKey("modern_motion")
+        val modernCardGradient = booleanPreferencesKey("modern_card_gradient")
+        val modernFullBar = stringPreferencesKey("modern_full_bar")
+        val modernFlags = booleanPreferencesKey("modern_flags")
         val audioPassthrough = booleanPreferencesKey("audio_passthrough")
         val showPosters = booleanPreferencesKey("show_posters")
         val vodMergeDuplicates = booleanPreferencesKey("vod_merge_duplicates")
@@ -690,6 +695,11 @@ class LiveTvPreferences @Inject constructor(
             browseByChannelName = p[Keys.browseByChannelName] ?: d.browseByChannelName,
             showPlaylistInInfo = p[Keys.showPlaylistInInfo] ?: d.showPlaylistInInfo,
             showNowLine = p[Keys.showNowLine] ?: d.showNowLine,
+            modernInterface = p[Keys.modernInterface] ?: d.modernInterface,
+            modernMotion = p[Keys.modernMotion] ?: d.modernMotion,
+            modernCardGradient = p[Keys.modernCardGradient] ?: d.modernCardGradient,
+            modernFullBar = p[Keys.modernFullBar] ?: d.modernFullBar,
+            modernFlags = p[Keys.modernFlags] ?: d.modernFlags,
             audioPassthrough = p[Keys.audioPassthrough] ?: d.audioPassthrough,
             showPosters = p[Keys.showPosters] ?: d.showPosters,
             vodMergeDuplicates = p[Keys.vodMergeDuplicates] ?: d.vodMergeDuplicates,
@@ -1046,6 +1056,11 @@ class LiveTvPreferences @Inject constructor(
         p[Keys.browseByChannelName] = s.browseByChannelName
         p[Keys.showPlaylistInInfo] = s.showPlaylistInInfo
         p[Keys.showNowLine] = s.showNowLine
+        p[Keys.modernInterface] = s.modernInterface
+        p[Keys.modernMotion] = s.modernMotion
+        p[Keys.modernCardGradient] = s.modernCardGradient
+        p[Keys.modernFullBar] = s.modernFullBar
+        p[Keys.modernFlags] = s.modernFlags
         p[Keys.audioPassthrough] = s.audioPassthrough
         p[Keys.showPosters] = s.showPosters
         p[Keys.vodMergeDuplicates] = s.vodMergeDuplicates

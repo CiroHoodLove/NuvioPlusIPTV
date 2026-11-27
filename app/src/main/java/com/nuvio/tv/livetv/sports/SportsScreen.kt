@@ -758,7 +758,7 @@ private fun SportsHub(
     val tabsScope = androidx.compose.runtime.rememberCoroutineScope()
     fun showPickedDay() {
         val i = (day + SportsRepository.DAYS_BACK - 1).coerceAtLeast(0)
-        tabsScope.launch { runCatching { tabsState.animateScrollToItem(i) } }
+        tabsScope.launch { runCatching { if (com.nuvio.tv.livetv.ui.ModernLook.on) tabsState.scrollToItem(i) else tabsState.animateScrollToItem(i) } }
     }
     LaunchedEffect(day) { showPickedDay() }
     fun dayTabReq(offset: Int) = dayTabReqs.getOrPut(offset) { FocusRequester() }

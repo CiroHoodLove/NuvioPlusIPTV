@@ -861,6 +861,9 @@ fun LiveTvPlayerScreen(
                             openGear()
                         } else when {
                             playback.error != null && (playback.reconnectAttempt > 8 || playingRecording) -> viewModel.playback.retry()
+                            // Modern Interface: with the bar gone, OK leaves full screen (back in the
+                            // guide, on this channel). While the bar is up, OK opens it as before.
+                            ModernLook.on && !embedded && !archive && current != null && !bannerVisible && !panelFull && !playback.userPaused -> onBack()
                             // OK: the full panel (timeline, buttons, options), on Play/Pause.
                             current != null -> { panelFull = true; controlFocus = PanelControl.PLAY; showBanner() }
                             else -> showBanner()
@@ -895,6 +898,10 @@ fun LiveTvPlayerScreen(
                             shifting && viewModel.playback.shiftCanSeek() && (bannerVisible || viewModel.playback.shiftIsBehind()) -> {
                                 viewModel.playback.shiftSeekBy(-10_000L * (1 + minOf(e.nativeKeyEvent.repeatCount, 11))); showBanner()
                             }
+                            // Modern Interface: Left brings up the bar, then Left / Right move through its options.
+                            ModernLook.on && !settings.overlayMode && current != null && !embedded -> {
+                                if (e.nativeKeyEvent.repeatCount == 0) { panelFull = true; controlFocus = PanelControl.PLAY; showBanner() }
+                            }
                             settings.overlayMode -> listVisible = true
                             else -> { viewModel.requestGroupsOnReturn(); onBackToGroups() }
                         }
@@ -905,6 +912,10 @@ fun LiveTvPlayerScreen(
                             archive -> scrub(forward = true, repeat = e.nativeKeyEvent.repeatCount)
                             shifting && viewModel.playback.shiftCanSeek() && viewModel.playback.shiftIsBehind() -> {
                                 viewModel.playback.shiftSeekBy(10_000L * (1 + minOf(e.nativeKeyEvent.repeatCount, 11))); showBanner()
+                            }
+                            // Modern Interface: Right brings up the bar too (its Backups button has the backups).
+                            ModernLook.on && !settings.overlayMode && current != null && !embedded -> {
+                                if (e.nativeKeyEvent.repeatCount == 0) { panelFull = true; controlFocus = PanelControl.PLAY; showBanner() }
                             }
                             e.nativeKeyEvent.repeatCount == 0 -> {
                                 val tapAt = System.currentTimeMillis()
@@ -1073,8 +1084,8 @@ fun LiveTvPlayerScreen(
         }
         AnimatedVisibility(
             visible = browseChannel != null && bannerVisible && !panelFull,
-            enter = fadeIn(),
-            exit = fadeOut(),
+            enter = com.nuvio.tv.livetv.modern.modernBarEnter(fadeIn()),
+            exit = com.nuvio.tv.livetv.modern.modernBarExit(fadeOut()),
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
             browseChannel?.let { b ->
@@ -1143,8 +1154,8 @@ fun LiveTvPlayerScreen(
         }
         AnimatedVisibility(
             visible = (bannerVisible || panelFull || pausedNow) && current != null && (browseKey == null || panelFull),
-            enter = slideInVertically { it } + fadeIn(),
-            exit = slideOutVertically { it } + fadeOut(),
+            enter = com.nuvio.tv.livetv.modern.modernBarEnter(slideInVertically { it } + fadeIn()),
+            exit = com.nuvio.tv.livetv.modern.modernBarExit(slideOutVertically { it } + fadeOut()),
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
             current?.let { ch ->

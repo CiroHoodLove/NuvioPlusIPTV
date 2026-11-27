@@ -1206,6 +1206,9 @@ open class MainActivity : ComponentActivity() {
                     val liveTvSettingsNow = liveTvSettingsFlow
                         .collectAsState(initial = com.nuvio.tv.livetv.model.LiveTvSettings())
                         .value
+                    // Modern Interface (Settings → Live TV → Look): read by the guide and Sports hub.
+                    androidx.compose.runtime.SideEffect { com.nuvio.tv.livetv.ui.ModernLook.on = liveTvSettingsNow.modernInterface }
+                    androidx.compose.runtime.SideEffect { com.nuvio.tv.livetv.modern.ModernPrefs.apply(liveTvSettingsNow) }
                     val liveTvInSidebar = liveTvSettingsNow.showInSidebar
                     // Live TV fork: On Demand shows in the menu only when a provider's movies or
                     // series are imported.

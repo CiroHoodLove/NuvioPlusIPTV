@@ -1,0 +1,869 @@
+diff --git a/app/src/main/java/com/nuvio/tv/MainActivity.kt b/app/src/main/java/com/nuvio/tv/MainActivity.kt
+index f3ba67e..d292175 100644
+--- a/app/src/main/java/com/nuvio/tv/MainActivity.kt
++++ b/app/src/main/java/com/nuvio/tv/MainActivity.kt
+@@ -1206,6 +1206,9 @@ open class MainActivity : ComponentActivity() {
+                     val liveTvSettingsNow = liveTvSettingsFlow
+                         .collectAsState(initial = com.nuvio.tv.livetv.model.LiveTvSettings())
+                         .value
++                    // Modern Interface (Settings → Live TV → Look): read by the guide and Sports hub.
++                    androidx.compose.runtime.SideEffect { com.nuvio.tv.livetv.ui.ModernLook.on = liveTvSettingsNow.modernInterface }
++                    androidx.compose.runtime.SideEffect { com.nuvio.tv.livetv.modern.ModernPrefs.apply(liveTvSettingsNow) }
+                     val liveTvInSidebar = liveTvSettingsNow.showInSidebar
+                     // Live TV fork: On Demand shows in the menu only when a provider's movies or
+                     // series are imported.
+diff --git a/app/src/main/java/com/nuvio/tv/livetv/data/LiveTvPreferences.kt b/app/src/main/java/com/nuvio/tv/livetv/data/LiveTvPreferences.kt
+index fad6652..0df8b60 100644
+--- a/app/src/main/java/com/nuvio/tv/livetv/data/LiveTvPreferences.kt
++++ b/app/src/main/java/com/nuvio/tv/livetv/data/LiveTvPreferences.kt
+@@ -194,6 +194,11 @@ class LiveTvPreferences @Inject constructor(
+         val browseByChannelName = booleanPreferencesKey("browse_by_channel_name")
+         val showPlaylistInInfo = booleanPreferencesKey("show_playlist_in_info")
+         val showNowLine = booleanPreferencesKey("show_now_line")
++        val modernInterface = booleanPreferencesKey("modern_interface")
++        val modernMotion = stringPreferencesKey("modern_motion")
++        val modernCardGradient = booleanPreferencesKey("modern_card_gradient")
++        val modernFullBar = stringPreferencesKey("modern_full_bar")
++        val modernFlags = booleanPreferencesKey("modern_flags")
+         val audioPassthrough = booleanPreferencesKey("audio_passthrough")
+         val showPosters = booleanPreferencesKey("show_posters")
+         val vodMergeDuplicates = booleanPreferencesKey("vod_merge_duplicates")
+@@ -690,6 +695,11 @@ class LiveTvPreferences @Inject constructor(
+             browseByChannelName = p[Keys.browseByChannelName] ?: d.browseByChannelName,
+             showPlaylistInInfo = p[Keys.showPlaylistInInfo] ?: d.showPlaylistInInfo,
+             showNowLine = p[Keys.showNowLine] ?: d.showNowLine,
++            modernInterface = p[Keys.modernInterface] ?: d.modernInterface,
++            modernMotion = p[Keys.modernMotion] ?: d.modernMotion,
++            modernCardGradient = p[Keys.modernCardGradient] ?: d.modernCardGradient,
++            modernFullBar = p[Keys.modernFullBar] ?: d.modernFullBar,
++            modernFlags = p[Keys.modernFlags] ?: d.modernFlags,
+             audioPassthrough = p[Keys.audioPassthrough] ?: d.audioPassthrough,
+             showPosters = p[Keys.showPosters] ?: d.showPosters,
+             vodMergeDuplicates = p[Keys.vodMergeDuplicates] ?: d.vodMergeDuplicates,
+@@ -1046,6 +1056,11 @@ class LiveTvPreferences @Inject constructor(
+         p[Keys.browseByChannelName] = s.browseByChannelName
+         p[Keys.showPlaylistInInfo] = s.showPlaylistInInfo
+         p[Keys.showNowLine] = s.showNowLine
++        p[Keys.modernInterface] = s.modernInterface
++        p[Keys.modernMotion] = s.modernMotion
++        p[Keys.modernCardGradient] = s.modernCardGradient
++        p[Keys.modernFullBar] = s.modernFullBar
++        p[Keys.modernFlags] = s.modernFlags
+         p[Keys.audioPassthrough] = s.audioPassthrough
+         p[Keys.showPosters] = s.showPosters
+         p[Keys.vodMergeDuplicates] = s.vodMergeDuplicates
+diff --git a/app/src/main/java/com/nuvio/tv/livetv/model/LiveTvModels.kt b/app/src/main/java/com/nuvio/tv/livetv/model/LiveTvModels.kt
+index 06b286f..5f93572 100644
+--- a/app/src/main/java/com/nuvio/tv/livetv/model/LiveTvModels.kt
++++ b/app/src/main/java/com/nuvio/tv/livetv/model/LiveTvModels.kt
+@@ -616,6 +616,16 @@ data class LiveTvSettings(
+     val showPlaylistInInfo: Boolean = true,
+     /** The vertical line marking the current time in the guide. */
+     val showNowLine: Boolean = true,
++    /** Modern Interface: the flat charcoal look (neutral grays, rounder cards) in the guide and the Sports hub. */
++    val modernInterface: Boolean = false,
++    /** Modern Interface motion: "smooth" (focus scale and fades), "light" (fades only) or "off". */
++    val modernMotion: String = "smooth",
++    /** Modern Interface: the glow from each team's colour on the match cards. */
++    val modernCardGradient: Boolean = true,
++    /** Modern Interface full screen info bar: "fade", "panel" or "full". */
++    val modernFullBar: String = "fade",
++    /** Modern Interface: a country flag before each channel category that names a country. */
++    val modernFlags: Boolean = true,
+     /** Send Dolby / DTS audio untouched to the TV or speaker (off: the app decodes it). */
+     val audioPassthrough: Boolean = true,
+     /** Show posters for what's on; off: just the channel logo (no poster lookups at all). */
+diff --git a/app/src/main/java/com/nuvio/tv/livetv/modern/ModernKit.kt b/app/src/main/java/com/nuvio/tv/livetv/modern/ModernKit.kt
+new file mode 100644
+index 0000000..7720bac
+--- /dev/null
++++ b/app/src/main/java/com/nuvio/tv/livetv/modern/ModernKit.kt
+@@ -0,0 +1,303 @@
++package com.nuvio.tv.livetv.modern
++
++import android.content.Context
++import androidx.compose.animation.EnterTransition
++import androidx.compose.animation.ExitTransition
++import androidx.compose.animation.core.AnimationSpec
++import androidx.compose.animation.core.snap
++import androidx.compose.animation.core.tween
++import androidx.compose.animation.fadeIn
++import androidx.compose.animation.fadeOut
++import androidx.compose.foundation.background
++import androidx.compose.foundation.border
++import androidx.compose.foundation.layout.Arrangement
++import androidx.compose.foundation.layout.Box
++import androidx.compose.foundation.layout.Column
++import androidx.compose.foundation.layout.Row
++import androidx.compose.foundation.layout.fillMaxWidth
++import androidx.compose.foundation.layout.height
++import androidx.compose.foundation.layout.padding
++import androidx.compose.foundation.layout.size
++import androidx.compose.foundation.shape.RoundedCornerShape
++import androidx.compose.runtime.Composable
++import androidx.compose.runtime.getValue
++import androidx.compose.runtime.mutableStateOf
++import androidx.compose.runtime.setValue
++import androidx.compose.ui.Alignment
++import androidx.compose.ui.Modifier
++import androidx.compose.ui.draw.clip
++import androidx.compose.ui.draw.drawBehind
++import androidx.compose.ui.geometry.Offset
++import androidx.compose.ui.graphics.Brush
++import androidx.compose.ui.graphics.Color
++import androidx.compose.ui.graphics.graphicsLayer
++import androidx.compose.ui.text.font.FontWeight
++import androidx.compose.ui.text.style.TextAlign
++import androidx.compose.ui.unit.dp
++import androidx.compose.ui.unit.sp
++import com.nuvio.tv.R
++import com.nuvio.tv.livetv.model.LiveTvSettings
++import com.nuvio.tv.livetv.sports.GameState
++import com.nuvio.tv.livetv.sports.ScoreLabel
++import com.nuvio.tv.livetv.sports.SportsCatalog
++import com.nuvio.tv.livetv.sports.SportsEvent
++import com.nuvio.tv.livetv.sports.SportsFollows
++import com.nuvio.tv.livetv.sports.SportsLook
++import com.nuvio.tv.livetv.sports.StateBadge
++import com.nuvio.tv.livetv.sports.TeamLogo
++import com.nuvio.tv.livetv.sports.bandColor
++import com.nuvio.tv.livetv.sports.teamColor
++import com.nuvio.tv.livetv.ui.LiveText
++import com.nuvio.tv.livetv.ui.ModernLook
++import com.nuvio.tv.ui.theme.NuvioTheme
++
++/*
++ * The shared pieces of the Modern Interface (Settings > Live TV > Look).
++ * Everything here is flat colour and static drawing: no blur, nothing that animates by itself.
++ * With Modern Interface off, none of these change anything.
++ */
++
++/** The Modern Interface's extra settings, copied in from LiveTvSettings by MainActivity. */
++internal object ModernPrefs {
++    /** "smooth" (focus scale and fades), "light" (fades only), "off" (no animation at all). */
++    var motion by mutableStateOf("smooth")
++    var cardGradient by mutableStateOf(true)
++    /** The full screen info bar style: "fade", "panel" or "full". */
++    var fullBar by mutableStateOf("fade")
++    var flags by mutableStateOf(true)
++
++    val animationsOn: Boolean get() = motion != "off"
++    val scaleOn: Boolean get() = motion == "smooth"
++
++    fun apply(s: LiveTvSettings) {
++        if (motion != s.modernMotion) motion = s.modernMotion
++        if (cardGradient != s.modernCardGradient) cardGradient = s.modernCardGradient
++        if (fullBar != s.modernFullBar) fullBar = s.modernFullBar
++        if (flags != s.modernFlags) flags = s.modernFlags
++    }
++}
++
++/** The value after [current] in [all], wrapping round (for the settings rows that cycle on OK). */
++internal fun modernNext(current: String, all: List<String>): String {
++    val i = all.indexOf(current)
++    return all[(i + 1).mod(all.size)]
++}
++
++/** The words shown for a stored Modern Interface choice. */
++internal fun modernOptionLabel(context: Context, value: String): String = when (value) {
++    "smooth" -> context.getString(R.string.iptv_settings_modern_motion_smooth)
++    "light" -> context.getString(R.string.iptv_settings_modern_motion_light)
++    "off" -> context.getString(R.string.iptv_settings_modern_motion_off)
++    "fade" -> context.getString(R.string.iptv_settings_modern_bar_fade)
++    "panel" -> context.getString(R.string.iptv_settings_modern_bar_panel)
++    "full" -> context.getString(R.string.iptv_settings_modern_bar_full)
++    else -> value
++}
++
++// ------------------------------------------------------------------ motion
++
++/** A colour or alpha change: [ms] long as before; with Modern on and Motion "Off", instant. */
++internal fun <T> modernFade(ms: Int): AnimationSpec<T> =
++    if (ModernLook.on && !ModernPrefs.animationsOn) snap() else tween(ms)
++
++/** Something that moves or resizes: [ms] long as before; with Modern on, only in "Smooth". */
++internal fun <T> modernMove(ms: Int): AnimationSpec<T> =
++    if (ModernLook.on && !ModernPrefs.scaleOn) snap() else tween(ms)
++
++/**
++ * How the full screen info bar comes in. Modern off: [default] (the bar as it always was).
++ * Modern on: only the "Fade" style animates (a plain fade, one alpha layer, nothing slides);
++ * "Panel" and "Full width" appear and disappear instantly.
++ */
++internal fun modernBarEnter(default: EnterTransition): EnterTransition = when {
++    !ModernLook.on -> default
++    ModernPrefs.fullBar == "fade" && ModernPrefs.animationsOn -> fadeIn(tween(160))
++    else -> EnterTransition.None
++}
++
++internal fun modernBarExit(default: ExitTransition): ExitTransition = when {
++    !ModernLook.on -> default
++    ModernPrefs.fullBar == "fade" && ModernPrefs.animationsOn -> fadeOut(tween(160))
++    else -> ExitTransition.None
++}
++
++/** The surface behind the full screen info bar for each Modern style. */
++internal fun Modifier.modernBar(style: String): Modifier = when (style) {
++    // A bar across the whole bottom edge.
++    "full" -> this.background(ModernLook.PanelDark)
++    // No card: the picture simply darkens towards the bottom (one gradient, cheap to draw).
++    "fade" -> this.background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xE6000000))))
++    // A floating rounded panel.
++    else -> this
++        .background(ModernLook.PanelDark, RoundedCornerShape(26.dp))
++        .border(1.dp, ModernLook.Divider, RoundedCornerShape(26.dp))
++}
++
++// ------------------------------------------------------------------ country flags
++
++private val notCountryCodes = setOf("TV", "HD", "SD", "FM", "AM", "PM", "AI", "XX")
++
++private val isoCodes: Set<String> by lazy { java.util.Locale.getISOCountries().toHashSet() }
++
++/** English country names (lower case) to their two letter code, plus the short names playlists use. */
++private val countryNames: Map<String, String> by lazy {
++    val m = HashMap<String, String>()
++    for (code in java.util.Locale.getISOCountries()) {
++        val name = runCatching {
++            java.util.Locale.Builder().setRegion(code).build().getDisplayCountry(java.util.Locale.ENGLISH)
++        }.getOrDefault("")
++        if (name.isNotBlank() && name != code && '(' !in name) m[name.lowercase()] = code
++    }
++    m.putAll(
++        mapOf(
++            "usa" to "US", "america" to "US", "united states of america" to "US",
++            "uk" to "GB", "britain" to "GB", "great britain" to "GB", "england" to "GB",
++            "scotland" to "GB", "wales" to "GB", "northern ireland" to "GB",
++            "turkey" to "TR", "czech republic" to "CZ", "uae" to "AE", "holland" to "NL",
++            "burma" to "MM", "myanmar" to "MM", "hong kong" to "HK", "korea" to "KR",
++            "ivory coast" to "CI", "cape verde" to "CV", "palestine" to "PS", "russia" to "RU"
++        )
++    )
++    m
++}
++
++private val flagCache = HashMap<String, String?>()
++
++private fun flagOf(code: String): String {
++    val sb = StringBuilder()
++    for (ch in code) sb.appendCodePoint(0x1F1E6 + (ch - 'A'))
++    return sb.toString()
++}
++
++private fun computeFlag(title: String): String? {
++    val words = title.split(Regex("[^\\p{L}]+")).filter { it.isNotEmpty() }.take(4)
++    if (words.isEmpty()) return null
++    // "US | Sports", "FR: Cinema": a leading two letter code in capitals.
++    val first = words[0]
++    if (first.length == 2 && first == first.uppercase() && first !in notCountryCodes) {
++        val code = if (first == "UK") "GB" else first
++        if (code in isoCodes) return flagOf(code)
++    }
++    // "Germany Sports", "Sports France", "United States": a country name in the first few words.
++    val low = words.map { it.lowercase() }
++    for (n in 2 downTo 1) {
++        for (i in 0..(low.size - n)) {
++            countryNames[low.subList(i, i + n).joinToString(" ")]?.let { return flagOf(it) }
++        }
++    }
++    return null
++}
++
++/** The flag for a category that names a country, or null. */
++internal fun modernFlagFor(title: String): String? = synchronized(flagCache) {
++    if (flagCache.containsKey(title)) flagCache[title]
++    else computeFlag(title).also { flagCache[title] = it }
++}
++
++/** A category's title for the list: with its country flag in front when Modern flags are on. */
++internal fun modernGroupTitle(title: String, special: Boolean): String {
++    if (!ModernLook.on || !ModernPrefs.flags || special) return title
++    val flag = modernFlagFor(title) ?: return title
++    return "$flag  $title"
++}
++
++// ------------------------------------------------------------------ match card
++
++/**
++ * A game as the design's match card: 150 tall, 18 radius, a dark base with a glow from each
++ * team's colour, the two logos at the sides and the score (or "vs") in the middle. The width
++ * comes from the caller. [focused] only draws the ring; the caller owns focus and clicks.
++ */
++@Composable
++internal fun ModernMatchCard(
++    ev: SportsEvent,
++    use24h: Boolean,
++    hideScores: Boolean,
++    focused: Boolean,
++    modifier: Modifier = Modifier,
++    playing: Boolean = false,
++    follows: SportsFollows? = null
++) {
++    val league = SportsCatalog.league(ev.leagueId)
++    val sides = if (league != null) ev.ordered(league.sport) else listOfNotNull(ev.away, ev.home)
++    if (sides.size != 2) return
++    val left = bandColor(teamColor(sides[0].team))
++    val right = bandColor(teamColor(sides[1].team))
++    val shape = RoundedCornerShape(18.dp)
++    val ring = NuvioTheme.colors.FocusRing
++    val accent = NuvioTheme.colors.Secondary
++    val scaleOn = ModernPrefs.scaleOn
++    Box(
++        modifier
++            .height(150.dp)
++            .graphicsLayer { val s = if (focused && scaleOn) 1.03f else 1f; scaleX = s; scaleY = s }
++            .clip(shape)
++            .background(ModernLook.Card)
++            .drawBehind {
++                if (ModernPrefs.cardGradient) {
++                    drawRect(
++                        Brush.radialGradient(
++                            listOf(left.copy(alpha = 0.55f), Color.Transparent),
++                            center = Offset(size.width * 0.18f, size.height * 0.5f),
++                            radius = size.width * 0.75f
++                        )
++                    )
++                    drawRect(
++                        Brush.radialGradient(
++                            listOf(right.copy(alpha = 0.55f), Color.Transparent),
++                            center = Offset(size.width * 0.82f, size.height * 0.5f),
++                            radius = size.width * 0.75f
++                        )
++                    )
++                }
++            }
++            .then(
++                if (focused) Modifier.border(3.dp, ring, shape)
++                else if (playing) Modifier.border(2.dp, accent, shape)
++                else Modifier
++            )
++    ) {
++        Box(Modifier.align(Alignment.TopCenter).padding(top = 10.dp)) {
++            StateBadge(ev, playing = playing, use24h = use24h)
++        }
++        sides.forEachIndexed { i, side ->
++            val followed = follows?.followsTeam(ev.leagueId, side.team.id) == true
++            Column(
++                Modifier
++                    .align(if (i == 0) Alignment.CenterStart else Alignment.CenterEnd)
++                    .padding(start = if (i == 0) 12.dp else 0.dp, end = if (i == 0) 0.dp else 12.dp)
++                    .size(width = 76.dp, height = 96.dp),
++                horizontalAlignment = Alignment.CenterHorizontally,
++                verticalArrangement = Arrangement.Center
++            ) {
++                TeamLogo(side.team, 54.dp)
++                LiveText(
++                    side.team.abbr.ifBlank { side.team.name } + if (followed) " ★" else "",
++                    size = 12.sp, weight = FontWeight.Bold, color = Color.White
++                )
++            }
++        }
++        Row(Modifier.align(Alignment.Center), verticalAlignment = Alignment.CenterVertically) {
++            if (!hideScores && ev.hasScore) {
++                val a = sides[0].score.orEmpty()
++                val b = sides[1].score.orEmpty()
++                val da = a.toDoubleOrNull()
++                val db = b.toDoubleOrNull()
++                ScoreLabel(a, dim = da != null && db != null && da < db, size = 26.sp)
++                LiveText("-", color = Color.White, size = 22.sp, weight = FontWeight.Black)
++                ScoreLabel(b, dim = da != null && db != null && db < da, size = 26.sp)
++            } else {
++                LiveText("vs", color = SportsLook.Dim, size = 20.sp, weight = FontWeight.Black)
++            }
++        }
++        val status = ev.status?.takeIf { it.isNotBlank() && ev.state != GameState.PRE }
++        if (status != null) {
++            LiveText(
++                status,
++                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 10.dp).fillMaxWidth(0.5f),
++                color = ModernLook.TextSecondary, size = 12.sp,
++                align = TextAlign.Center
++            )
++        }
++    }
++}
+diff --git a/app/src/main/java/com/nuvio/tv/livetv/sports/SportsDesign.kt b/app/src/main/java/com/nuvio/tv/livetv/sports/SportsDesign.kt
+index eb8d940..aa84e42 100644
+--- a/app/src/main/java/com/nuvio/tv/livetv/sports/SportsDesign.kt
++++ b/app/src/main/java/com/nuvio/tv/livetv/sports/SportsDesign.kt
+@@ -63,6 +63,9 @@ import androidx.compose.ui.window.DialogProperties
+ import coil3.compose.AsyncImage
+ import com.nuvio.tv.livetv.ui.ChannelLogo
+ import com.nuvio.tv.livetv.ui.LiveText
++import com.nuvio.tv.livetv.modern.ModernMatchCard
++import com.nuvio.tv.livetv.modern.ModernPrefs
++import com.nuvio.tv.livetv.ui.ModernLook
+ import com.nuvio.tv.livetv.ui.formatClock
+ import com.nuvio.tv.ui.theme.NuvioTheme
+ import kotlinx.coroutines.delay
+@@ -80,17 +83,17 @@ internal object SportsLook {
+     // Translucent and a shade lighter (not flat near-black), so cards read as glass over the
+     // hub's own background, matching the full-screen player's bar and gear panel. Alpha alone
+     // barely shows against a background this close in tone, so the edge is bumped up too.
+-    val Card = Color(0xAD1E212C)
+-    val CardRaised = Color(0xB8282C3A)
+-    val Border = Color.White.copy(alpha = 0.20f)
+-    val Divider = Color.White.copy(alpha = 0.08f)
+-    val Dim = Color(0xFF8B90A0)
+-    val Faint = Color(0xFF5D6170)
++    val Card get() = if (ModernLook.on) ModernLook.Card else Color(0xAD1E212C)
++    val CardRaised get() = if (ModernLook.on) ModernLook.CardRaised else Color(0xB8282C3A)
++    val Border get() = if (ModernLook.on) ModernLook.Divider else Color.White.copy(alpha = 0.20f)
++    val Divider get() = if (ModernLook.on) ModernLook.Divider else Color.White.copy(alpha = 0.08f)
++    val Dim get() = if (ModernLook.on) ModernLook.TextTertiary else Color(0xFF8B90A0)
++    val Faint get() = if (ModernLook.on) ModernLook.TextDisabled else Color(0xFF5D6170)
+     val Live = Color(0xFFE53935)
+     val Flash = Color(0xFFFFD54A)
+-    val Ink = Color(0xFF0B0C10)
+-    val Shape = RoundedCornerShape(14.dp)
+-    val SmallShape = RoundedCornerShape(10.dp)
++    val Ink get() = if (ModernLook.on) ModernLook.Background else Color(0xFF0B0C10)
++    val Shape get() = RoundedCornerShape(if (ModernLook.on) 18.dp else 14.dp)
++    val SmallShape get() = RoundedCornerShape(if (ModernLook.on) 14.dp else 10.dp)
+ 
+     /** Scores with every digit the same width, so 9 → 10 doesn't shift the row. */
+     val ScoreStyle = TextStyle(fontFeatureSettings = "tnum", fontWeight = FontWeight.Black)
+@@ -135,7 +138,7 @@ internal fun Modifier.sportsFrame(
+     val shape = RoundedCornerShape(radius)
+     val ring = NuvioTheme.focusRing.brush()
+     return this
+-        .graphicsLayer { val s = if (focused) 1.02f else 1f; scaleX = s; scaleY = s }
++        .graphicsLayer { val s = if (focused && (!ModernLook.on || ModernPrefs.scaleOn)) 1.02f else 1f; scaleX = s; scaleY = s }
+         .clip(shape)
+         .background(background)
+         // The border on top of everything inside (team bands reach the edges).
+@@ -324,7 +327,7 @@ internal fun TeamBand(
+     Row(
+         modifier
+             .fillMaxWidth()
+-            .background(Brush.horizontalGradient(0f to c.copy(alpha = 0.92f), 0.7f to c.copy(alpha = 0.28f), 1f to c.copy(alpha = 0.05f)))
++            .then(if (ModernLook.on && !ModernPrefs.cardGradient) Modifier else Modifier.background(Brush.horizontalGradient(0f to c.copy(alpha = 0.92f), 0.7f to c.copy(alpha = 0.28f), 1f to c.copy(alpha = 0.05f))))
+             .padding(start = 9.dp, end = 6.dp),
+         verticalAlignment = Alignment.CenterVertically
+     ) {
+@@ -429,6 +432,32 @@ internal fun GameCard(
+     val sport = league?.sport ?: Sport.OTHER
+     val sides = ev.ordered(sport)
+     val premium = sides.size != 2 && eventLook(ev, league).premium
++    // Modern Interface: a game between two sides is the design's match card (same focus, click and
++    // long press as below; events without two sides keep the band layout, restyled by SportsLook).
++    if (ModernLook.on && sides.size == 2) {
++        Box(
++            modifier
++                .fillMaxWidth()
++                .onFocusChanged { focused = it.isFocused; if (it.isFocused) GameFocus.onGame?.invoke(ev) }
++                .combinedClickable(
++                    interactionSource = remember { MutableInteractionSource() },
++                    indication = null,
++                    onClick = onClick,
++                    onLongClick = onLongClick
++                )
++        ) {
++            ModernMatchCard(
++                ev = ev,
++                use24h = use24h,
++                hideScores = hideScores,
++                focused = focused,
++                modifier = Modifier.fillMaxWidth(),
++                playing = playing,
++                follows = follows
++            )
++        }
++        return
++    }
+     Box(
+         modifier
+             .fillMaxWidth()
+diff --git a/app/src/main/java/com/nuvio/tv/livetv/sports/SportsScreen.kt b/app/src/main/java/com/nuvio/tv/livetv/sports/SportsScreen.kt
+index 564779a..95d0dac 100644
+--- a/app/src/main/java/com/nuvio/tv/livetv/sports/SportsScreen.kt
++++ b/app/src/main/java/com/nuvio/tv/livetv/sports/SportsScreen.kt
+@@ -758,7 +758,7 @@ private fun SportsHub(
+     val tabsScope = androidx.compose.runtime.rememberCoroutineScope()
+     fun showPickedDay() {
+         val i = (day + SportsRepository.DAYS_BACK - 1).coerceAtLeast(0)
+-        tabsScope.launch { runCatching { tabsState.animateScrollToItem(i) } }
++        tabsScope.launch { runCatching { if (com.nuvio.tv.livetv.ui.ModernLook.on) tabsState.scrollToItem(i) else tabsState.animateScrollToItem(i) } }
+     }
+     LaunchedEffect(day) { showPickedDay() }
+     fun dayTabReq(offset: Int) = dayTabReqs.getOrPut(offset) { FocusRequester() }
+diff --git a/app/src/main/java/com/nuvio/tv/livetv/ui/LiveTvComponents.kt b/app/src/main/java/com/nuvio/tv/livetv/ui/LiveTvComponents.kt
+index 9ede752..81fd8ee 100644
+--- a/app/src/main/java/com/nuvio/tv/livetv/ui/LiveTvComponents.kt
++++ b/app/src/main/java/com/nuvio/tv/livetv/ui/LiveTvComponents.kt
+@@ -335,6 +335,8 @@ internal fun resolveBackdrop(style: String): String {
+ /** Paints the backdrop; scales with the screen (fixed-pixel sizes looked tiny on 4K, huge at 720p). */
+ @Composable
+ internal fun Modifier.guideBackdrop(styleKey: String): Modifier {
++    // Modern Interface: one flat charcoal, no colored glow.
++    if (ModernLook.on) return this.background(ModernLook.Background)
+     val style = resolveBackdrop(styleKey)
+     // One modifier per style, kept across redraws. Built fresh on every pass, its picture was
+     // painted again (by the processor, five full-screen gradients) each time anything on the
+diff --git a/app/src/main/java/com/nuvio/tv/livetv/ui/LiveTvGuideScreen.kt b/app/src/main/java/com/nuvio/tv/livetv/ui/LiveTvGuideScreen.kt
+index ca5c467..3440732 100644
+--- a/app/src/main/java/com/nuvio/tv/livetv/ui/LiveTvGuideScreen.kt
++++ b/app/src/main/java/com/nuvio/tv/livetv/ui/LiveTvGuideScreen.kt
+@@ -191,20 +191,23 @@ fun LiveTvGuideScreen(
+         Box(Modifier.fillMaxSize().background(NuvioTheme.colors.Background))
+         return
+     }
+-    LiveTvGuideScreenBody(
+-        onOpenFullscreen = onOpenFullscreen,
+-        onOpenSettings = onOpenSettings,
+-        onOpenRecordings = onOpenRecordings,
+-        onOpenMultiview = onOpenMultiview,
+-        onOpenSportsMultiview = onOpenSportsMultiview,
+-        onFindInNuvio = onFindInNuvio,
+-        onOpenNuvioSearch = onOpenNuvioSearch,
+-        onOpenNuvioTitle = onOpenNuvioTitle,
+-        onReturnToSports = onReturnToSports,
+-        onReturnTo = onReturnTo,
+-        onOpenSportsGame = onOpenSportsGame,
+-        viewModel = viewModel
+-    )
++    // Modern Interface: the guide reads its grays through NuvioTheme.colors, so one wrapper restyles it.
++    ModernGuideTheme {
++        LiveTvGuideScreenBody(
++            onOpenFullscreen = onOpenFullscreen,
++            onOpenSettings = onOpenSettings,
++            onOpenRecordings = onOpenRecordings,
++            onOpenMultiview = onOpenMultiview,
++            onOpenSportsMultiview = onOpenSportsMultiview,
++            onFindInNuvio = onFindInNuvio,
++            onOpenNuvioSearch = onOpenNuvioSearch,
++            onOpenNuvioTitle = onOpenNuvioTitle,
++            onReturnToSports = onReturnToSports,
++            onReturnTo = onReturnTo,
++            onOpenSportsGame = onOpenSportsGame,
++            viewModel = viewModel
++        )
++    }
+ }
+ 
+ @Composable
+@@ -1214,7 +1217,7 @@ private fun LiveTvGuideScreenBody(
+                 }.coerceIn(minOf(130.dp, groupsFullWidth), groupsFullWidth)
+                 val groupsWidth by androidx.compose.animation.core.animateDpAsState(
+                     targetValue = if (groupsOpen) groupsFitWidth else 0.dp,
+-                    animationSpec = androidx.compose.animation.core.tween(220),
++                    animationSpec = com.nuvio.tv.livetv.modern.modernMove(220),
+                     label = "groupsWidth"
+                 )
+                 if (groupsWidth > 1.dp) androidx.compose.runtime.CompositionLocalProvider(LocalGuideScale provides guideScale(settings)) { GroupColumn(
+@@ -3699,7 +3702,7 @@ private fun GroupItem(
+     ) {
+         Spacer(Modifier.width(12.dp))
+         LiveText(
+-            group.title,
++            com.nuvio.tv.livetv.modern.modernGroupTitle(group.title, group.special),
+             modifier = Modifier.weight(1f),
+             color = colors.text,
+             size = gsp(14f),
+@@ -4272,8 +4275,8 @@ private fun menuItemColors(style: LiveMenuStyle, focused: Boolean, selected: Boo
+             secondary = colors.TextSecondary
+         )
+     }
+-    val bg by androidx.compose.animation.animateColorAsState(target.background, androidx.compose.animation.core.tween(150), label = "menuItemBg")
+-    val fg by androidx.compose.animation.animateColorAsState(target.content, androidx.compose.animation.core.tween(150), label = "menuItemFg")
++    val bg by androidx.compose.animation.animateColorAsState(target.background, com.nuvio.tv.livetv.modern.modernFade(150), label = "menuItemBg")
++    val fg by androidx.compose.animation.animateColorAsState(target.content, com.nuvio.tv.livetv.modern.modernFade(150), label = "menuItemFg")
+     return MenuItemColors(bg, fg, target.secondary)
+ }
+ 
+diff --git a/app/src/main/java/com/nuvio/tv/livetv/ui/LiveTvOverlayMode.kt b/app/src/main/java/com/nuvio/tv/livetv/ui/LiveTvOverlayMode.kt
+index 1f934c3..07660d5 100644
+--- a/app/src/main/java/com/nuvio/tv/livetv/ui/LiveTvOverlayMode.kt
++++ b/app/src/main/java/com/nuvio/tv/livetv/ui/LiveTvOverlayMode.kt
+@@ -666,8 +666,8 @@ private fun OverlayModeContent(
+ 
+ // ==================================================================== panels
+ 
+-private val PanelDark = Color(0xE6141416)
+-private val PanelMid = Color(0x99141416)
++private val PanelDark get() = if (ModernLook.on) ModernLook.PanelDark else Color(0xE6141416)
++private val PanelMid get() = if (ModernLook.on) ModernLook.PanelMid else Color(0x99141416)
+ 
+ /**
+  * Keeps the highlighted row on screen the way a normal list does: the list moves one row at a
+diff --git a/app/src/main/java/com/nuvio/tv/livetv/ui/LiveTvPlayerPanel.kt b/app/src/main/java/com/nuvio/tv/livetv/ui/LiveTvPlayerPanel.kt
+index e57deeb..c4e6e80 100644
+--- a/app/src/main/java/com/nuvio/tv/livetv/ui/LiveTvPlayerPanel.kt
++++ b/app/src/main/java/com/nuvio/tv/livetv/ui/LiveTvPlayerPanel.kt
+@@ -64,6 +64,7 @@ import androidx.compose.ui.unit.dp
+ import androidx.compose.ui.unit.sp
+ import androidx.tv.material3.Icon
+ import com.nuvio.tv.livetv.model.LiveChannel
++import com.nuvio.tv.livetv.modern.modernBar
+ import com.nuvio.tv.ui.theme.NuvioTheme
+ 
+ /** What the bottom panel is showing. */
+@@ -272,20 +273,36 @@ internal fun LiveTvPlayerPanel(
+     val rowOpen = withRow && inRow
+     val selectedTab = rowLists.firstOrNull { it.id == rowSelected } ?: rowLists.firstOrNull()
+ 
++    // Modern Interface: the bar's own style ("fade", "panel", "full"); null = the bar as it always was.
++    val modernStyle = if (ModernLook.on) com.nuvio.tv.livetv.modern.ModernPrefs.fullBar else null
++    val edgeToEdge = modernStyle == "full" || modernStyle == "fade"
+     Box(
+         modifier = modifier
+             .fillMaxWidth()
+-            .padding(start = 36.dp, end = 36.dp, bottom = 14.dp, top = 8.dp)
++            .padding(
++                start = if (edgeToEdge) 0.dp else 36.dp,
++                end = if (edgeToEdge) 0.dp else 36.dp,
++                bottom = if (edgeToEdge) 0.dp else 14.dp,
++                top = 8.dp
++            )
+     ) {
+       Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+         Column(
+             Modifier
+                 .fillMaxWidth()
+                 // Not trimmed at the edge, so the seek picture can rise above the card.
+-                .glass(glassColor(background), clipContent = false)
++                .then(
++                    if (modernStyle != null) Modifier.modernBar(modernStyle)
++                    else Modifier.glass(glassColor(background), clipContent = false)
++                )
+                 // Equal on every side, so the poster (and everything else) sits in an evenly
+                 // framed card instead of a wider gap on one axis than the other.
+-                .padding(14.dp)
++                .padding(
++                    start = if (edgeToEdge) 36.dp else 14.dp,
++                    end = if (edgeToEdge) 36.dp else 14.dp,
++                    top = if (modernStyle == "fade") 44.dp else 14.dp,
++                    bottom = 14.dp
++                )
+         ) {
+             val density = LocalDensity.current
+             var middleHeight by remember { mutableStateOf(0.dp) }
+diff --git a/app/src/main/java/com/nuvio/tv/livetv/ui/LiveTvPlayerScreen.kt b/app/src/main/java/com/nuvio/tv/livetv/ui/LiveTvPlayerScreen.kt
+index 33233d9..34315a8 100644
+--- a/app/src/main/java/com/nuvio/tv/livetv/ui/LiveTvPlayerScreen.kt
++++ b/app/src/main/java/com/nuvio/tv/livetv/ui/LiveTvPlayerScreen.kt
+@@ -861,6 +861,9 @@ fun LiveTvPlayerScreen(
+                             openGear()
+                         } else when {
+                             playback.error != null && (playback.reconnectAttempt > 8 || playingRecording) -> viewModel.playback.retry()
++                            // Modern Interface: with the bar gone, OK leaves full screen (back in the
++                            // guide, on this channel). While the bar is up, OK opens it as before.
++                            ModernLook.on && !embedded && !archive && current != null && !bannerVisible && !panelFull && !playback.userPaused -> onBack()
+                             // OK: the full panel (timeline, buttons, options), on Play/Pause.
+                             current != null -> { panelFull = true; controlFocus = PanelControl.PLAY; showBanner() }
+                             else -> showBanner()
+@@ -895,6 +898,10 @@ fun LiveTvPlayerScreen(
+                             shifting && viewModel.playback.shiftCanSeek() && (bannerVisible || viewModel.playback.shiftIsBehind()) -> {
+                                 viewModel.playback.shiftSeekBy(-10_000L * (1 + minOf(e.nativeKeyEvent.repeatCount, 11))); showBanner()
+                             }
++                            // Modern Interface: Left brings up the bar, then Left / Right move through its options.
++                            ModernLook.on && !settings.overlayMode && current != null && !embedded -> {
++                                if (e.nativeKeyEvent.repeatCount == 0) { panelFull = true; controlFocus = PanelControl.PLAY; showBanner() }
++                            }
+                             settings.overlayMode -> listVisible = true
+                             else -> { viewModel.requestGroupsOnReturn(); onBackToGroups() }
+                         }
+@@ -906,6 +913,10 @@ fun LiveTvPlayerScreen(
+                             shifting && viewModel.playback.shiftCanSeek() && viewModel.playback.shiftIsBehind() -> {
+                                 viewModel.playback.shiftSeekBy(10_000L * (1 + minOf(e.nativeKeyEvent.repeatCount, 11))); showBanner()
+                             }
++                            // Modern Interface: Right brings up the bar too (its Backups button has the backups).
++                            ModernLook.on && !settings.overlayMode && current != null && !embedded -> {
++                                if (e.nativeKeyEvent.repeatCount == 0) { panelFull = true; controlFocus = PanelControl.PLAY; showBanner() }
++                            }
+                             e.nativeKeyEvent.repeatCount == 0 -> {
+                                 val tapAt = System.currentTimeMillis()
+                                 rightDownAt = tapAt
+@@ -1073,8 +1084,8 @@ fun LiveTvPlayerScreen(
+         }
+         AnimatedVisibility(
+             visible = browseChannel != null && bannerVisible && !panelFull,
+-            enter = fadeIn(),
+-            exit = fadeOut(),
++            enter = com.nuvio.tv.livetv.modern.modernBarEnter(fadeIn()),
++            exit = com.nuvio.tv.livetv.modern.modernBarExit(fadeOut()),
+             modifier = Modifier.align(Alignment.BottomCenter)
+         ) {
+             browseChannel?.let { b ->
+@@ -1143,8 +1154,8 @@ fun LiveTvPlayerScreen(
+         }
+         AnimatedVisibility(
+             visible = (bannerVisible || panelFull || pausedNow) && current != null && (browseKey == null || panelFull),
+-            enter = slideInVertically { it } + fadeIn(),
+-            exit = slideOutVertically { it } + fadeOut(),
++            enter = com.nuvio.tv.livetv.modern.modernBarEnter(slideInVertically { it } + fadeIn()),
++            exit = com.nuvio.tv.livetv.modern.modernBarExit(slideOutVertically { it } + fadeOut()),
+             modifier = Modifier.align(Alignment.BottomCenter)
+         ) {
+             current?.let { ch ->
+diff --git a/app/src/main/java/com/nuvio/tv/livetv/ui/ModernLook.kt b/app/src/main/java/com/nuvio/tv/livetv/ui/ModernLook.kt
+new file mode 100644
+index 0000000..714d4f9
+--- /dev/null
++++ b/app/src/main/java/com/nuvio/tv/livetv/ui/ModernLook.kt
+@@ -0,0 +1,71 @@
++package com.nuvio.tv.livetv.ui
++
++import androidx.compose.runtime.Composable
++import androidx.compose.runtime.CompositionLocalProvider
++import androidx.compose.runtime.getValue
++import androidx.compose.runtime.mutableStateOf
++import androidx.compose.runtime.remember
++import androidx.compose.runtime.setValue
++import androidx.compose.ui.graphics.Color
++import com.nuvio.tv.ui.theme.LocalNuvioColors
++import com.nuvio.tv.ui.theme.NuvioColorScheme
++import com.nuvio.tv.ui.theme.NuvioTheme
++
++/*
++ * Modern Interface (Settings → Live TV → Look): a flat charcoal look for the TV guide and the
++ * Sports hub. Neutral grays only; the selected theme still supplies the accent (the focus ring,
++ * the highlight), so this never replaces a color the user picked.
++ *
++ * [on] is a Compose state set from the Live TV settings in MainActivity, so screens that read it
++ * (directly or through SportsLook) redraw as soon as the switch changes.
++ */
++internal object ModernLook {
++    var on by mutableStateOf(false)
++
++    val Background = Color(0xFF0D0D0D)   // screen
++    val Panel = Color(0xFF1A1A1A)        // raised background, panels, modals
++    val Surface = Color(0xFF1E1E1E)      // menus
++    val Card = Color(0xFF242424)         // cards, pills
++    val CardRaised = Color(0xFF2D2D2D)   // selected / surface variant
++    val Divider = Color(0xFF333333)      // borders and dividers
++    val TextPrimary = Color(0xFFFFFFFF)
++    val TextSecondary = Color(0xFFB3B3B3)
++    val TextTertiary = Color(0xFF808080)
++    val TextDisabled = Color(0xFF4D4D4D)
++
++    // The player-overlay panels keep some see-through so the picture still shows behind them.
++    val PanelDark = Color(0xE61A1A1A)
++    val PanelMid = Color(0x991A1A1A)
++}
++
++/**
++ * Everything inside sees the Modern Interface's neutral grays through NuvioTheme.colors (the guide's
++ * rows, pills, info panel and menus all read it), while the theme's accent (Secondary, FocusRing,
++ * FocusBackground) is left exactly as the user picked it. Only wraps the Live TV guide and the
++ * Sports hub, never the rest of the app. Pure-black AMOLED backgrounds are left alone.
++ */
++@Composable
++internal fun ModernGuideTheme(content: @Composable () -> Unit) {
++    val current = NuvioTheme.colors
++    if (!ModernLook.on || current.Background == Color.Black) {
++        content()
++        return
++    }
++    val palette = NuvioTheme.palette
++    val modern = remember(palette) {
++        NuvioColorScheme(
++            palette.copy(
++                background = ModernLook.Background,
++                backgroundElevated = ModernLook.Panel,
++                backgroundCard = ModernLook.Card,
++                surface = ModernLook.Surface,
++                surfaceVariant = ModernLook.CardRaised,
++                panel = ModernLook.Panel,
++                field = Color(0xFF222222),
++                menu = ModernLook.Surface,
++                modal = ModernLook.Panel
++            )
++        )
++    }
++    CompositionLocalProvider(LocalNuvioColors provides modern) { content() }
++}
+diff --git a/app/src/main/java/com/nuvio/tv/ui/navigation/NuvioNavHost.kt b/app/src/main/java/com/nuvio/tv/ui/navigation/NuvioNavHost.kt
+index 13fb89e..eed74b4 100644
+--- a/app/src/main/java/com/nuvio/tv/ui/navigation/NuvioNavHost.kt
++++ b/app/src/main/java/com/nuvio/tv/ui/navigation/NuvioNavHost.kt
+@@ -1683,7 +1683,8 @@ private fun PlaybackNavHost(
+                 }
+             }
+             // Live TV fork: the Sports page (scores, schedules, which of your channels show each game).
+-            if (sportsShown) com.nuvio.tv.livetv.sports.SportsScreen(
++            // Modern Interface (Settings → Live TV → Look) restyles the grays here; off = no change.
++            if (sportsShown) com.nuvio.tv.livetv.ui.ModernGuideTheme { com.nuvio.tv.livetv.sports.SportsScreen(
+                 onOpenLive = { com.nuvio.tv.livetv.sports.openLiveTvFullscreen(navController) },
+                 onOpenMultiview = { channelKey ->
+                     com.nuvio.tv.livetv.sports.SportsWatchLaunch.request(2, channelKey)
+@@ -1708,7 +1709,7 @@ private fun PlaybackNavHost(
+                         }
+                     }
+                 }
+-            )
++            ) }
+         }
+ 
+         forkPageComposable(Screen.OnDemand.route) {
+diff --git a/app/src/main/java/com/nuvio/tv/ui/screens/settings/LiveTvSettingsContent.kt b/app/src/main/java/com/nuvio/tv/ui/screens/settings/LiveTvSettingsContent.kt
+index 263a3e6..24f3e3c 100644
+--- a/app/src/main/java/com/nuvio/tv/ui/screens/settings/LiveTvSettingsContent.kt
++++ b/app/src/main/java/com/nuvio/tv/ui/screens/settings/LiveTvSettingsContent.kt
+@@ -1147,6 +1147,39 @@ internal fun LiveTvSettingsContent(
+                         { update { it.copy(showFrameRate = !it.showFrameRate) } }
+                     )
+                     SubHeading(context.getString(R.string.iptv_settings_look))
++                    SettingsToggleRow(
++                        context.getString(R.string.iptv_settings_modern_interface),
++                        context.getString(R.string.iptv_settings_modern_interface_summary),
++                        s.modernInterface,
++                        { update { it.copy(modernInterface = !it.modernInterface) } }
++                    )
++                    // The Modern Interface's own options: shown only while it is on.
++                    if (s.modernInterface) {
++                        SettingsActionRow(
++                            title = context.getString(R.string.iptv_settings_modern_motion),
++                            subtitle = context.getString(R.string.iptv_settings_modern_motion_summary),
++                            value = com.nuvio.tv.livetv.modern.modernOptionLabel(context, s.modernMotion),
++                            onClick = { update { it.copy(modernMotion = com.nuvio.tv.livetv.modern.modernNext(it.modernMotion, listOf("smooth", "light", "off"))) } }
++                        )
++                        SettingsToggleRow(
++                            context.getString(R.string.iptv_settings_modern_card_gradient),
++                            context.getString(R.string.iptv_settings_modern_card_gradient_summary),
++                            s.modernCardGradient,
++                            { update { it.copy(modernCardGradient = !it.modernCardGradient) } }
++                        )
++                        SettingsActionRow(
++                            title = context.getString(R.string.iptv_settings_modern_full_bar),
++                            subtitle = context.getString(R.string.iptv_settings_modern_full_bar_summary),
++                            value = com.nuvio.tv.livetv.modern.modernOptionLabel(context, s.modernFullBar),
++                            onClick = { update { it.copy(modernFullBar = com.nuvio.tv.livetv.modern.modernNext(it.modernFullBar, listOf("fade", "panel", "full"))) } }
++                        )
++                        SettingsToggleRow(
++                            context.getString(R.string.iptv_settings_modern_flags),
++                            context.getString(R.string.iptv_settings_modern_flags_summary),
++                            s.modernFlags,
++                            { update { it.copy(modernFlags = !it.modernFlags) } }
++                        )
++                    }
+                     SettingsActionRow(
+                         title = context.getString(R.string.iptv_settings_guide_sports_background),
+                         subtitle = context.getString(R.string.iptv_settings_the_backdrop_behind_the_tv_guide_and_the),
+diff --git a/app/src/main/res/values/strings_iptv_settings.xml b/app/src/main/res/values/strings_iptv_settings.xml
+index 6a4e753..a54f746 100644
+--- a/app/src/main/res/values/strings_iptv_settings.xml
++++ b/app/src/main/res/values/strings_iptv_settings.xml
+@@ -259,6 +259,22 @@
+     <string name="iptv_settings_frame_rate_on_the_info_bar">"Frame Rate on the Info Bar"</string>
+     <string name="iptv_settings_shows_how_smooth_the_channel_is_25_30">"Shows how smooth the channel is (25, 30, 50 or 60 FPS) next to the picture size while watching full screen. Handy for live sports."</string>
+     <string name="iptv_settings_look">"Look"</string>
++    <string name="iptv_settings_modern_interface">"Modern Interface"</string>
++    <string name="iptv_settings_modern_motion">"Motion and performance"</string>
++    <string name="iptv_settings_modern_motion_summary">"Smooth: focus zoom and fades. Light: fades only. Off: no animation, lightest on slower TV boxes."</string>
++    <string name="iptv_settings_modern_motion_smooth">"Smooth"</string>
++    <string name="iptv_settings_modern_motion_light">"Light"</string>
++    <string name="iptv_settings_modern_motion_off">"Off"</string>
++    <string name="iptv_settings_modern_card_gradient">"Team color glow on game cards"</string>
++    <string name="iptv_settings_modern_card_gradient_summary">"Each game card glows in the colors of its two teams. Turn off for flat cards."</string>
++    <string name="iptv_settings_modern_full_bar">"Full screen info bar"</string>
++    <string name="iptv_settings_modern_full_bar_summary">"Fade: fades in and out over the picture. Panel: a rounded panel. Full width: a bar across the whole screen."</string>
++    <string name="iptv_settings_modern_bar_fade">"Fade"</string>
++    <string name="iptv_settings_modern_bar_panel">"Panel"</string>
++    <string name="iptv_settings_modern_bar_full">"Full width"</string>
++    <string name="iptv_settings_modern_flags">"Country flags on categories"</string>
++    <string name="iptv_settings_modern_flags_summary">"Show a flag before each channel category that names a country."</string>
++    <string name="iptv_settings_modern_interface_summary">"A flat charcoal look for the TV guide and the Sports hub: neutral grays, rounder cards and no colored backdrop. Your theme color still marks what's selected."</string>
+     <string name="iptv_settings_guide_sports_background">"Guide &amp; Sports Background"</string>
+     <string name="iptv_settings_the_backdrop_behind_the_tv_guide_and_the">"The backdrop behind the TV Guide and the Sports hub. Follows your color theme, or pick one of the app icon colors."</string>
+     <string name="iptv_settings_highlight_style">"Highlight Style"</string>

@@ -64,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Icon
 import com.nuvio.tv.livetv.model.LiveChannel
+import com.nuvio.tv.livetv.modern.modernBar
 import com.nuvio.tv.ui.theme.NuvioTheme
 
 /** What the bottom panel is showing. */
@@ -272,20 +273,36 @@ internal fun LiveTvPlayerPanel(
     val rowOpen = withRow && inRow
     val selectedTab = rowLists.firstOrNull { it.id == rowSelected } ?: rowLists.firstOrNull()
 
+    // Modern Interface: the bar's own style ("fade", "panel", "full"); null = the bar as it always was.
+    val modernStyle = if (ModernLook.on) com.nuvio.tv.livetv.modern.ModernPrefs.fullBar else null
+    val edgeToEdge = modernStyle == "full" || modernStyle == "fade"
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(start = 36.dp, end = 36.dp, bottom = 14.dp, top = 8.dp)
+            .padding(
+                start = if (edgeToEdge) 0.dp else 36.dp,
+                end = if (edgeToEdge) 0.dp else 36.dp,
+                bottom = if (edgeToEdge) 0.dp else 14.dp,
+                top = 8.dp
+            )
     ) {
       Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         Column(
             Modifier
                 .fillMaxWidth()
                 // Not trimmed at the edge, so the seek picture can rise above the card.
-                .glass(glassColor(background), clipContent = false)
+                .then(
+                    if (modernStyle != null) Modifier.modernBar(modernStyle)
+                    else Modifier.glass(glassColor(background), clipContent = false)
+                )
                 // Equal on every side, so the poster (and everything else) sits in an evenly
                 // framed card instead of a wider gap on one axis than the other.
-                .padding(14.dp)
+                .padding(
+                    start = if (edgeToEdge) 36.dp else 14.dp,
+                    end = if (edgeToEdge) 36.dp else 14.dp,
+                    top = if (modernStyle == "fade") 44.dp else 14.dp,
+                    bottom = 14.dp
+                )
         ) {
             val density = LocalDensity.current
             var middleHeight by remember { mutableStateOf(0.dp) }

@@ -335,6 +335,8 @@ internal fun resolveBackdrop(style: String): String {
 /** Paints the backdrop; scales with the screen (fixed-pixel sizes looked tiny on 4K, huge at 720p). */
 @Composable
 internal fun Modifier.guideBackdrop(styleKey: String): Modifier {
+    // Modern Interface: one flat charcoal, no colored glow.
+    if (ModernLook.on) return this.background(ModernLook.Background)
     val style = resolveBackdrop(styleKey)
     // One modifier per style, kept across redraws. Built fresh on every pass, its picture was
     // painted again (by the processor, five full-screen gradients) each time anything on the

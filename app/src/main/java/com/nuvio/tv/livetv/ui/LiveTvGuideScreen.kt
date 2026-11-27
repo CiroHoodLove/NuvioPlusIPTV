@@ -191,20 +191,23 @@ fun LiveTvGuideScreen(
         Box(Modifier.fillMaxSize().background(NuvioTheme.colors.Background))
         return
     }
-    LiveTvGuideScreenBody(
-        onOpenFullscreen = onOpenFullscreen,
-        onOpenSettings = onOpenSettings,
-        onOpenRecordings = onOpenRecordings,
-        onOpenMultiview = onOpenMultiview,
-        onOpenSportsMultiview = onOpenSportsMultiview,
-        onFindInNuvio = onFindInNuvio,
-        onOpenNuvioSearch = onOpenNuvioSearch,
-        onOpenNuvioTitle = onOpenNuvioTitle,
-        onReturnToSports = onReturnToSports,
-        onReturnTo = onReturnTo,
-        onOpenSportsGame = onOpenSportsGame,
-        viewModel = viewModel
-    )
+    // Modern Interface: the guide reads its grays through NuvioTheme.colors, so one wrapper restyles it.
+    ModernGuideTheme {
+        LiveTvGuideScreenBody(
+            onOpenFullscreen = onOpenFullscreen,
+            onOpenSettings = onOpenSettings,
+            onOpenRecordings = onOpenRecordings,
+            onOpenMultiview = onOpenMultiview,
+            onOpenSportsMultiview = onOpenSportsMultiview,
+            onFindInNuvio = onFindInNuvio,
+            onOpenNuvioSearch = onOpenNuvioSearch,
+            onOpenNuvioTitle = onOpenNuvioTitle,
+            onReturnToSports = onReturnToSports,
+            onReturnTo = onReturnTo,
+            onOpenSportsGame = onOpenSportsGame,
+            viewModel = viewModel
+        )
+    }
 }
 
 @Composable
@@ -1214,7 +1217,7 @@ private fun LiveTvGuideScreenBody(
                 }.coerceIn(minOf(130.dp, groupsFullWidth), groupsFullWidth)
                 val groupsWidth by androidx.compose.animation.core.animateDpAsState(
                     targetValue = if (groupsOpen) groupsFitWidth else 0.dp,
-                    animationSpec = androidx.compose.animation.core.tween(220),
+                    animationSpec = com.nuvio.tv.livetv.modern.modernMove(220),
                     label = "groupsWidth"
                 )
                 if (groupsWidth > 1.dp) androidx.compose.runtime.CompositionLocalProvider(LocalGuideScale provides guideScale(settings)) { GroupColumn(
@@ -3699,7 +3702,7 @@ private fun GroupItem(
     ) {
         Spacer(Modifier.width(12.dp))
         LiveText(
-            group.title,
+            com.nuvio.tv.livetv.modern.modernGroupTitle(group.title, group.special),
             modifier = Modifier.weight(1f),
             color = colors.text,
             size = gsp(14f),
@@ -4272,8 +4275,8 @@ private fun menuItemColors(style: LiveMenuStyle, focused: Boolean, selected: Boo
             secondary = colors.TextSecondary
         )
     }
-    val bg by androidx.compose.animation.animateColorAsState(target.background, androidx.compose.animation.core.tween(150), label = "menuItemBg")
-    val fg by androidx.compose.animation.animateColorAsState(target.content, androidx.compose.animation.core.tween(150), label = "menuItemFg")
+    val bg by androidx.compose.animation.animateColorAsState(target.background, com.nuvio.tv.livetv.modern.modernFade(150), label = "menuItemBg")
+    val fg by androidx.compose.animation.animateColorAsState(target.content, com.nuvio.tv.livetv.modern.modernFade(150), label = "menuItemFg")
     return MenuItemColors(bg, fg, target.secondary)
 }
 

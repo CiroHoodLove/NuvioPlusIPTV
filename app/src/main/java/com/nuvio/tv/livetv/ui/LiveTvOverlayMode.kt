@@ -666,8 +666,8 @@ private fun OverlayModeContent(
 
 // ==================================================================== panels
 
-private val PanelDark = Color(0xE6141416)
-private val PanelMid = Color(0x99141416)
+private val PanelDark get() = if (ModernLook.on) ModernLook.PanelDark else Color(0xE6141416)
+private val PanelMid get() = if (ModernLook.on) ModernLook.PanelMid else Color(0x99141416)
 
 /**
  * Keeps the highlighted row on screen the way a normal list does: the list moves one row at a
