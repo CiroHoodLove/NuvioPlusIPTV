@@ -388,6 +388,7 @@ internal fun androidx.compose.ui.graphics.drawscope.DrawScope.drawGuideBackdrop(
  */
 @Composable
 internal fun guideSurface(): Color {
+    if (ModernLook.on) return ModernLook.Card
     // The same dark, see-through glass as the info panel at the top (glassColor): the theme's
     // background, not its lighter "elevated" grey, which read as a different, flatter material
     // next to it. The tiles also get a soft white edge (see ProgramBlock/channel cell) — the
@@ -400,6 +401,7 @@ internal fun guideSurface(): Color {
 /** Shows on now, and the group on screen: a step lighter than [guideSurface] (same glass, lifted with white). */
 @Composable
 internal fun guideSurfaceVariant(): Color {
+    if (ModernLook.on) return ModernLook.CardRaised
     val c = NuvioTheme.colors.Background
     val base = if (c.luminance() < 0.003f) Color(0xFF0E0E12) else c
     val alpha = when (LocalGuideDarkness.current) { "solid" -> 0.96f; "standard" -> 0.58f; else -> 0.72f }
@@ -476,17 +478,21 @@ internal fun focusedSecondaryTextColor(focused: Boolean): Color =
  */
 @Composable
 internal fun ChannelLogo(url: String?, size: Dp, modifier: Modifier = Modifier) {
+    val hasLogo = !url.isNullOrBlank() && !DeadLogos.isDead(url)
+    // Modern Interface: the logo sits on a small white rounded tile (so any logo reads on black).
+    val tile = ModernLook.on && hasLogo
     Box(
-        modifier = modifier.size(width = size * 1.6f, height = size),
+        modifier = modifier.size(width = size * 1.6f, height = size)
+            .then(if (tile) Modifier.clip(RoundedCornerShape(8.dp)).background(Color.White) else Modifier),
         contentAlignment = Alignment.Center
     ) {
-        if (!url.isNullOrBlank() && !DeadLogos.isDead(url)) {
+        if (hasLogo) {
             AsyncImage(
                 model = url,
                 contentDescription = null,
                 contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize().padding(2.dp),
-                onError = { DeadLogos.failed(url, it.result.throwable) }
+                modifier = Modifier.fillMaxSize().padding(if (tile) 4.dp else 2.dp),
+                onError = { DeadLogos.failed(url!!, it.result.throwable) }
             )
         }
     }
@@ -925,6 +931,8 @@ internal object LiveCorners {
 /** The corner rounding for Live TV's cards and tiles (the same as Nuvio's posters). */
 @Composable
 internal fun liveCorner(): androidx.compose.ui.unit.Dp {
+    // Modern Interface: every guide tile gets the design's soft corners.
+    if (ModernLook.on) return 14.dp
     val context = androidx.compose.ui.platform.LocalContext.current
     androidx.compose.runtime.remember { LiveCorners.start(context) }
     return LiveCorners.radius.collectAsState().value.dp

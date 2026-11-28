@@ -13,6 +13,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -49,6 +52,38 @@ import kotlinx.coroutines.delay
 internal fun LeagueChip(league: League?, label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
     val shape = RoundedCornerShape(50)
+    // Modern Interface: the design's league circle (its logo in a round tile, the name under it).
+    if (com.nuvio.tv.livetv.ui.ModernLook.on) {
+        val ring = NuvioTheme.colors.FocusRing
+        val accent = NuvioTheme.colors.Secondary
+        Column(
+            modifier
+                .width(70.dp)
+                .onFocusChanged { focused = it.isFocused }
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                Modifier.size(50.dp).clip(CircleShape)
+                    .background(if (selected) com.nuvio.tv.livetv.ui.ModernLook.CardRaised else com.nuvio.tv.livetv.ui.ModernLook.Card)
+                    .border(
+                        if (focused) 3.dp else if (selected) 2.dp else 1.dp,
+                        if (focused) ring else if (selected) accent else com.nuvio.tv.livetv.ui.ModernLook.Divider,
+                        CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                if (league != null) LeagueMark(league, 30.dp)
+                else LiveText("All", color = Color.White, size = 13.sp, weight = FontWeight.Black)
+            }
+            Spacer(Modifier.height(3.dp))
+            LiveText(
+                label, color = if (selected || focused) Color.White else SportsLook.Dim, size = 10.sp,
+                weight = if (selected) FontWeight.Bold else FontWeight.Medium, maxLines = 1, align = TextAlign.Center
+            )
+        }
+        return
+    }
     Row(
         modifier
             .height(SportsSpace.Control)

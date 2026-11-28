@@ -22,32 +22,32 @@ import com.nuvio.tv.ui.theme.NuvioTheme
 internal object ModernLook {
     var on by mutableStateOf(false)
 
-    val Background = Color(0xFF0D0D0D)   // screen
-    val Panel = Color(0xFF1A1A1A)        // raised background, panels, modals
-    val Surface = Color(0xFF1E1E1E)      // menus
-    val Card = Color(0xFF242424)         // cards, pills
-    val CardRaised = Color(0xFF2D2D2D)   // selected / surface variant
-    val Divider = Color(0xFF333333)      // borders and dividers
+    val Background = Color(0xFF000000)   // screen: pure OLED black
+    val Panel = Color(0xFF111216)        // raised background, panels, modals
+    val Surface = Color(0xFF111216)      // menus
+    val Card = Color(0xFF181A20)         // cards, pills, idle rows
+    val CardRaised = Color(0xFF2A2D35)   // selected row / surface variant (the grey)
+    val Divider = Color(0xFF26282F)      // borders and dividers
+    val LiveRed = Color(0xFFFF5A5F)      // the LIVE tag
     val TextPrimary = Color(0xFFFFFFFF)
     val TextSecondary = Color(0xFFB3B3B3)
     val TextTertiary = Color(0xFF808080)
     val TextDisabled = Color(0xFF4D4D4D)
 
     // The player-overlay panels keep some see-through so the picture still shows behind them.
-    val PanelDark = Color(0xE61A1A1A)
-    val PanelMid = Color(0x991A1A1A)
+    val PanelDark = Color(0xE6111216)
+    val PanelMid = Color(0x99111216)
 }
 
 /**
  * Everything inside sees the Modern Interface's neutral grays through NuvioTheme.colors (the guide's
  * rows, pills, info panel and menus all read it), while the theme's accent (Secondary, FocusRing,
  * FocusBackground) is left exactly as the user picked it. Only wraps the Live TV guide and the
- * Sports hub, never the rest of the app. Pure-black AMOLED backgrounds are left alone.
+ * Sports hub, never the rest of the app. Works on pure-black (AMOLED) screens too: the background stays black, the surfaces get the modern greys.
  */
 @Composable
 internal fun ModernGuideTheme(content: @Composable () -> Unit) {
-    val current = NuvioTheme.colors
-    if (!ModernLook.on || current.Background == Color.Black) {
+    if (!ModernLook.on) {
         content()
         return
     }
@@ -61,7 +61,7 @@ internal fun ModernGuideTheme(content: @Composable () -> Unit) {
                 surface = ModernLook.Surface,
                 surfaceVariant = ModernLook.CardRaised,
                 panel = ModernLook.Panel,
-                field = Color(0xFF222222),
+                field = Color(0xFF1B1D23),
                 menu = ModernLook.Surface,
                 modal = ModernLook.Panel
             )

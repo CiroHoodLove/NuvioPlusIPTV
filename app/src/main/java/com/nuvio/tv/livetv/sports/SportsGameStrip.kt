@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyListState
@@ -666,6 +668,38 @@ internal fun StripGameCard(
         GameState.PRE -> upcoming ?: "Starting soon"
         GameState.POST -> if (hideScores) "Ended" else event.status ?: "Final"
         GameState.OFF -> event.status ?: "Unavailable"
+    }
+    // Modern Interface: a game between two sides is the design's match card (team-colour glow,
+    // both logos, the channel along the bottom). Same focus, click and long press as below.
+    if (com.nuvio.tv.livetv.ui.ModernLook.on && sides.size == 2) {
+        val foot = channel?.channel?.name?.let { if (otherStreams > 0) "$it  +$otherStreams" else it }
+            ?: if (upcoming != null) upcoming else "No matched channel"
+        Box(
+            modifier.then(if (cardHeight != null) Modifier.fillMaxWidth().height(cardHeight) else Modifier.width(250.dp).fillMaxHeight())
+                .onFocusChanged { ownFocus = it.isFocused }
+                .semantics(mergeDescendants = true) { if (!available) disabled() }
+                .focusProperties { canFocus = cursorOn == null }
+                .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+        ) {
+            com.nuvio.tv.livetv.modern.ModernMatchCard(
+                ev = event,
+                use24h = android.text.format.DateFormat.is24HourFormat(androidx.compose.ui.platform.LocalContext.current),
+                hideScores = hideScores,
+                focused = focused,
+                modifier = Modifier.fillMaxSize(),
+                playing = selected || assignedPanes.isNotEmpty(),
+                fill = true,
+                footer = foot
+            )
+            if (assignedPanes.isNotEmpty()) {
+                SportsBadge(
+                    assignedPanes.joinToString(" · ") { "P${it + 1}" },
+                    NuvioTheme.colors.Secondary, NuvioTheme.colors.OnSecondary,
+                    modifier = Modifier.align(Alignment.TopStart).padding(6.dp)
+                )
+            }
+        }
+        return
     }
     Column(
         modifier.then(if (cardHeight != null) Modifier.fillMaxWidth().height(cardHeight) else Modifier.width(250.dp).fillMaxHeight())

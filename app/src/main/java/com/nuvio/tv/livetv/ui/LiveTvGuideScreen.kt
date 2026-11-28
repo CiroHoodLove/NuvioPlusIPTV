@@ -2856,6 +2856,7 @@ private fun GuideRow(
 ) {
     val windowEnd = windowStart + guideWindowMs(settings)
     val cellShape = RoundedCornerShape(liveCorner())
+    val modern = ModernLook.on
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -2873,6 +2874,7 @@ private fun GuideRow(
         val playingMark = isPlaying && settings.markPlayingChannel && !reorderMode && !moving && !nameFocused
         // The channel picked up to move: its own color (gold), apart from the highlight.
         val cell = if (moving) LiveCellColors(NuvioTheme.colors.Rating, NuvioTheme.colors.Rating, Color.Black)
+            else if (modern) com.nuvio.tv.livetv.modern.modernRowColors(nameFocused, isPlaying)
             else liveCellColors(focused = nameFocused, idle = guideSurface())
         Row(
             modifier = Modifier
@@ -2881,11 +2883,13 @@ private fun GuideRow(
                 .padding(end = 6.dp)
                 .glassTile(
                     cell.background,
-                    if (playingMark) NuvioTheme.colors.Error else if (cell.border == Color.Transparent) GuideGlassEdge else cell.border,
+                    // Modern: the playing channel is the grey row with a LIVE tag, not a red outline.
+                    if (playingMark && !modern) NuvioTheme.colors.Error
+                    else if (cell.border == Color.Transparent) (if (modern) Color.Transparent else GuideGlassEdge) else cell.border,
                     cellShape,
                     // Same as the group tiles: thin, and thicker only when highlighted (the red
                     // playing outline stays thick so it can still be seen).
-                    edgeWidth = if (channelFocused || playingMark) 2.dp else 1.dp
+                    edgeWidth = if (channelFocused || (playingMark && !modern)) 2.dp else 1.dp
                 )
                 .padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -2926,6 +2930,10 @@ private fun GuideRow(
                 )
             } else {
                 Spacer(Modifier.weight(1f))
+            }
+            if (modern && playingMark) {
+                com.nuvio.tv.livetv.modern.ModernLiveTag()
+                Spacer(Modifier.width(6.dp))
             }
             // Quality badge, from the last time this channel played. (Not while managing
             // visibility, so the eye at the end always has room.)
@@ -3665,27 +3673,35 @@ private fun GroupItem(
     onLongClick: (() -> Unit)?
 ) {
     var focused by remember { mutableStateOf(false) }
-    val shape = RoundedCornerShape(liveCorner())
+    val modern = ModernLook.on
+    // Modern Interface: a pill; the group on screen is a plain grey (no outline), the focused one
+    // uses the theme's focus look.
+    val shape = if (modern) RoundedCornerShape(50) else RoundedCornerShape(liveCorner())
     // Tiles like the channel rows; the group on screen is tinted, with a thin accent outline.
-    val colors = liveCellColors(
+    val colors = if (modern) com.nuvio.tv.livetv.modern.modernRowColors(focused, selected) else liveCellColors(
         focused = focused,
         idle = if (selected) NuvioTheme.colors.FocusBackground else guideSurface(),
         idleText = if (selected) NuvioTheme.colors.TextPrimary else NuvioTheme.colors.TextSecondary
     )
+    val flagCode = com.nuvio.tv.livetv.modern.modernGroupFlag(group.title, group.special)
     Row(
         modifier = modifier
             .fillMaxWidth()
             .height(tileHeight)
             .clip(shape)
             .background(colors.background)
-            .border(
-                if (focused) 2.dp else 1.dp,
-                when {
-                    focused -> colors.border
-                    selected -> NuvioTheme.colors.Secondary.copy(alpha = 0.8f)
-                    else -> GuideGlassEdge
-                },
-                shape
+            .then(
+                if (modern) {
+                    if (focused) Modifier.border(2.dp, colors.border, shape) else Modifier
+                } else Modifier.border(
+                    if (focused) 2.dp else 1.dp,
+                    when {
+                        focused -> colors.border
+                        selected -> NuvioTheme.colors.Secondary.copy(alpha = 0.8f)
+                        else -> GuideGlassEdge
+                    },
+                    shape
+                )
             )
             .onFocusChanged {
                 focused = it.isFocused
@@ -3697,15 +3713,19 @@ private fun GroupItem(
                 onClick = onClick,
                 onLongClick = onLongClick
             )
-            .padding(end = 10.dp),
+            .padding(end = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(if (modern) 10.dp else 12.dp))
+        if (flagCode != null) {
+            com.nuvio.tv.livetv.modern.ModernFlag(flagCode, gdp(18f))
+            Spacer(Modifier.width(8.dp))
+        }
         LiveText(
-            com.nuvio.tv.livetv.modern.modernGroupTitle(group.title, group.special),
+            group.title,
             modifier = Modifier.weight(1f),
             color = colors.text,
-            size = gsp(14f),
+            size = gsp(if (modern) 13f else 14f),
             weight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
             marquee = focused
         )

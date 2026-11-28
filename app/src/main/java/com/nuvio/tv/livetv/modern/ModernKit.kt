@@ -1,6 +1,20 @@
 package com.nuvio.tv.livetv.modern
 
 import android.content.Context
+import android.graphics.BitmapFactory
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Dp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import com.nuvio.tv.livetv.ui.LiveCellColors
+import com.nuvio.tv.livetv.ui.liveCellColors
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.AnimationSpec
@@ -14,6 +28,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -133,13 +148,80 @@ internal fun Modifier.modernBar(style: String): Modifier = when (style) {
         .border(1.dp, ModernLook.Divider, RoundedCornerShape(26.dp))
 }
 
+// ------------------------------------------------------------------ rows, tags
+
+/**
+ * Colors for a category / channel row: idle = card, on screen (selected) = the grey with NO outline,
+ * focused = the theme's own focus look. Changes fade over 140 ms (instant when Motion is Off).
+ */
+@Composable
+internal fun modernRowColors(focused: Boolean, selected: Boolean): LiveCellColors {
+    val f = liveCellColors(true, Color.Transparent)
+    val bgTarget = when {
+        focused -> f.background
+        selected -> ModernLook.CardRaised
+        else -> ModernLook.Card
+    }
+    val textTarget = when {
+        focused -> f.text
+        selected -> ModernLook.TextPrimary
+        else -> ModernLook.TextSecondary
+    }
+    val bg by animateColorAsState(bgTarget, modernFade(140), label = "modernRowBg")
+    val text by animateColorAsState(textTarget, modernFade(140), label = "modernRowText")
+    return LiveCellColors(bg, if (focused) f.border else Color.Transparent, text)
+}
+
+/** The small red LIVE tag shown on the channel that is playing. */
+@Composable
+internal fun ModernLiveTag(modifier: Modifier = Modifier) {
+    Box(
+        modifier.clip(RoundedCornerShape(5.dp)).background(ModernLook.LiveRed)
+            .padding(horizontal = 5.dp, vertical = 1.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        LiveText("LIVE", color = Color.White, size = 9.sp, weight = FontWeight.Black)
+    }
+}
+
 // ------------------------------------------------------------------ country flags
 
-private val notCountryCodes = setOf("TV", "HD", "SD", "FM", "AM", "PM", "AI", "XX")
+private val notCountryCodes = setOf("TV", "HD", "SD", "FM", "AM", "PM", "AI", "XX", "AR", "EN", "VIP", "PPV", "UHD", "FHD")
 
 private val isoCodes: Set<String> by lazy { java.util.Locale.getISOCountries().toHashSet() }
 
-/** English country names (lower case) to their two letter code, plus the short names playlists use. */
+/** What playlists call countries besides the plain English name ("Moroccan", "UK", "Holland"…). */
+private val countryAliases: Map<String, String> = mapOf(
+    "usa" to "US", "america" to "US", "american" to "US", "united states of america" to "US",
+    "uk" to "GB", "britain" to "GB", "great britain" to "GB", "british" to "GB", "england" to "GB",
+    "english" to "GB", "scotland" to "GB", "scottish" to "GB", "wales" to "GB", "welsh" to "GB",
+    "northern ireland" to "GB",
+    "turkey" to "TR", "turkiye" to "TR", "turkish" to "TR", "czech republic" to "CZ", "czechia" to "CZ",
+    "czech" to "CZ", "uae" to "AE", "emirati" to "AE", "holland" to "NL", "dutch" to "NL",
+    "burma" to "MM", "myanmar" to "MM", "hong kong" to "HK", "korea" to "KR", "korean" to "KR",
+    "ivory coast" to "CI", "cape verde" to "CV", "palestine" to "PS", "palestinian" to "PS",
+    "russia" to "RU", "russian" to "RU",
+    "moroccan" to "MA", "algerian" to "DZ", "tunisian" to "TN", "egyptian" to "EG", "libyan" to "LY",
+    "saudi" to "SA", "qatari" to "QA", "kuwaiti" to "KW", "lebanese" to "LB", "syrian" to "SY",
+    "iraqi" to "IQ", "jordanian" to "JO", "omani" to "OM", "bahraini" to "BH", "yemeni" to "YE",
+    "sudanese" to "SD", "mauritanian" to "MR", "somali" to "SO",
+    "french" to "FR", "spanish" to "ES", "italian" to "IT", "german" to "DE", "portuguese" to "PT",
+    "irish" to "IE", "belgian" to "BE", "swiss" to "CH", "austrian" to "AT", "greek" to "GR",
+    "ukrainian" to "UA", "polish" to "PL", "romanian" to "RO", "bulgarian" to "BG", "serbian" to "RS",
+    "croatian" to "HR", "albanian" to "AL", "bosnian" to "BA", "slovenian" to "SI", "slovak" to "SK",
+    "hungarian" to "HU", "swedish" to "SE", "norwegian" to "NO", "danish" to "DK", "finnish" to "FI",
+    "icelandic" to "IS", "lithuanian" to "LT", "latvian" to "LV", "estonian" to "EE", "georgian" to "GE",
+    "armenian" to "AM", "azerbaijani" to "AZ", "canadian" to "CA", "mexican" to "MX",
+    "brazilian" to "BR", "argentine" to "AR", "argentinian" to "AR", "colombian" to "CO",
+    "chilean" to "CL", "peruvian" to "PE", "venezuelan" to "VE", "cuban" to "CU", "indian" to "IN",
+    "pakistani" to "PK", "bangladeshi" to "BD", "afghan" to "AF", "iranian" to "IR", "israeli" to "IL",
+    "chinese" to "CN", "japanese" to "JP", "thai" to "TH", "vietnamese" to "VN", "filipino" to "PH",
+    "indonesian" to "ID", "malaysian" to "MY", "nigerian" to "NG", "ghanaian" to "GH", "kenyan" to "KE",
+    "ethiopian" to "ET", "senegalese" to "SN", "cameroonian" to "CM", "ivorian" to "CI",
+    "south african" to "ZA", "australian" to "AU", "kosovo" to "XK"
+)
+
+/** English country names (lower case) to their two letter code, plus the aliases above. */
 private val countryNames: Map<String, String> by lazy {
     val m = HashMap<String, String>()
     for (code in java.util.Locale.getISOCountries()) {
@@ -148,57 +230,75 @@ private val countryNames: Map<String, String> by lazy {
         }.getOrDefault("")
         if (name.isNotBlank() && name != code && '(' !in name) m[name.lowercase()] = code
     }
-    m.putAll(
-        mapOf(
-            "usa" to "US", "america" to "US", "united states of america" to "US",
-            "uk" to "GB", "britain" to "GB", "great britain" to "GB", "england" to "GB",
-            "scotland" to "GB", "wales" to "GB", "northern ireland" to "GB",
-            "turkey" to "TR", "czech republic" to "CZ", "uae" to "AE", "holland" to "NL",
-            "burma" to "MM", "myanmar" to "MM", "hong kong" to "HK", "korea" to "KR",
-            "ivory coast" to "CI", "cape verde" to "CV", "palestine" to "PS", "russia" to "RU"
-        )
-    )
+    m.putAll(countryAliases)
     m
 }
 
 private val flagCache = HashMap<String, String?>()
 
-private fun flagOf(code: String): String {
-    val sb = StringBuilder()
-    for (ch in code) sb.appendCodePoint(0x1F1E6 + (ch - 'A'))
-    return sb.toString()
-}
-
 private fun computeFlag(title: String): String? {
-    val words = title.split(Regex("[^\\p{L}]+")).filter { it.isNotEmpty() }.take(4)
+    val words = title.split(Regex("[^\\p{L}]+")).filter { it.isNotEmpty() }.take(5)
     if (words.isEmpty()) return null
-    // "US | Sports", "FR: Cinema": a leading two letter code in capitals.
+    // "US | Sports", "FR: Cinema", "DZ - Algerie": a leading two letter code in capitals.
     val first = words[0]
     if (first.length == 2 && first == first.uppercase() && first !in notCountryCodes) {
         val code = if (first == "UK") "GB" else first
-        if (code in isoCodes) return flagOf(code)
+        if (code in isoCodes) return code.lowercase()
     }
-    // "Germany Sports", "Sports France", "United States": a country name in the first few words.
+    // "Algeria", "Moroccan Sports", "Sports France", "South Africa": a country or demonym in the first words.
     val low = words.map { it.lowercase() }
     for (n in 2 downTo 1) {
         for (i in 0..(low.size - n)) {
-            countryNames[low.subList(i, i + n).joinToString(" ")]?.let { return flagOf(it) }
+            countryNames[low.subList(i, i + n).joinToString(" ")]?.let { return it.lowercase() }
+        }
+    }
+    // A code after the first word ("Sports | DZ").
+    for (w in words.drop(1)) {
+        if (w.length == 2 && w == w.uppercase() && w !in notCountryCodes) {
+            val code = if (w == "UK") "GB" else w
+            if (code in isoCodes) return code.lowercase()
         }
     }
     return null
 }
 
-/** The flag for a category that names a country, or null. */
-internal fun modernFlagFor(title: String): String? = synchronized(flagCache) {
+/** The lower-case country code for a category that names a country (flag file name), or null. */
+internal fun modernFlagCode(title: String): String? = synchronized(flagCache) {
     if (flagCache.containsKey(title)) flagCache[title]
     else computeFlag(title).also { flagCache[title] = it }
 }
 
-/** A category's title for the list: with its country flag in front when Modern flags are on. */
-internal fun modernGroupTitle(title: String, special: Boolean): String {
-    if (!ModernLook.on || !ModernPrefs.flags || special) return title
-    val flag = modernFlagFor(title) ?: return title
-    return "$flag  $title"
+/** The code to draw a flag for on this category, or null (Modern off, flags off, or a global/special group). */
+internal fun modernGroupFlag(title: String, special: Boolean): String? {
+    if (!ModernLook.on || !ModernPrefs.flags || special) return null
+    return modernFlagCode(title)
+}
+
+private val flagBitmaps = android.util.LruCache<String, ImageBitmap>(320)
+
+/** A round country flag (bundled 56 px picture, decoded once and kept). */
+@Composable
+internal fun ModernFlag(code: String, size: Dp, modifier: Modifier = Modifier) {
+    val context = LocalContext.current.applicationContext
+    val bitmap by produceState<ImageBitmap?>(flagBitmaps.get(code), code) {
+        if (value == null) {
+            val loaded = withContext(Dispatchers.IO) {
+                runCatching {
+                    context.assets.open("flags/$code.png").use { BitmapFactory.decodeStream(it)?.asImageBitmap() }
+                }.getOrNull()
+            }
+            if (loaded != null) {
+                flagBitmaps.put(code, loaded)
+                value = loaded
+            }
+        }
+    }
+    val shown = bitmap
+    if (shown != null) {
+        Image(shown, contentDescription = null, modifier = modifier.size(size).clip(CircleShape))
+    } else {
+        Spacer(modifier.size(size))
+    }
 }
 
 // ------------------------------------------------------------------ match card
@@ -216,7 +316,11 @@ internal fun ModernMatchCard(
     focused: Boolean,
     modifier: Modifier = Modifier,
     playing: Boolean = false,
-    follows: SportsFollows? = null
+    follows: SportsFollows? = null,
+    /** Fill the space given (the Sports strip's cards) instead of the 150 dp tall card. */
+    fill: Boolean = false,
+    /** A line along the bottom (the channel the game is on) instead of the game's status. */
+    footer: String? = null
 ) {
     val league = SportsCatalog.league(ev.leagueId)
     val sides = if (league != null) ev.ordered(league.sport) else listOfNotNull(ev.away, ev.home)
@@ -229,7 +333,7 @@ internal fun ModernMatchCard(
     val scaleOn = ModernPrefs.scaleOn
     Box(
         modifier
-            .height(150.dp)
+            .then(if (fill) Modifier.fillMaxSize() else Modifier.height(150.dp))
             .graphicsLayer { val s = if (focused && scaleOn) 1.03f else 1f; scaleX = s; scaleY = s }
             .clip(shape)
             .background(ModernLook.Card)
@@ -257,7 +361,7 @@ internal fun ModernMatchCard(
                 else Modifier
             )
     ) {
-        Box(Modifier.align(Alignment.TopCenter).padding(top = 10.dp)) {
+        Box(Modifier.align(Alignment.TopCenter).padding(top = if (fill) 5.dp else 10.dp)) {
             StateBadge(ev, playing = playing, use24h = use24h)
         }
         sides.forEachIndexed { i, side ->
@@ -266,14 +370,14 @@ internal fun ModernMatchCard(
                 Modifier
                     .align(if (i == 0) Alignment.CenterStart else Alignment.CenterEnd)
                     .padding(start = if (i == 0) 12.dp else 0.dp, end = if (i == 0) 0.dp else 12.dp)
-                    .size(width = 76.dp, height = 96.dp),
+                    .size(width = if (fill) 66.dp else 76.dp, height = if (fill) 64.dp else 96.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                TeamLogo(side.team, 54.dp)
+                TeamLogo(side.team, if (fill) 34.dp else 54.dp)
                 LiveText(
                     side.team.abbr.ifBlank { side.team.name } + if (followed) " ★" else "",
-                    size = 12.sp, weight = FontWeight.Bold, color = Color.White
+                    size = if (fill) 11.sp else 12.sp, weight = FontWeight.Bold, color = Color.White
                 )
             }
         }
@@ -283,19 +387,20 @@ internal fun ModernMatchCard(
                 val b = sides[1].score.orEmpty()
                 val da = a.toDoubleOrNull()
                 val db = b.toDoubleOrNull()
-                ScoreLabel(a, dim = da != null && db != null && da < db, size = 26.sp)
+                ScoreLabel(a, dim = da != null && db != null && da < db, size = if (fill) 21.sp else 26.sp)
                 LiveText("-", color = Color.White, size = 22.sp, weight = FontWeight.Black)
-                ScoreLabel(b, dim = da != null && db != null && db < da, size = 26.sp)
+                ScoreLabel(b, dim = da != null && db != null && db < da, size = if (fill) 21.sp else 26.sp)
             } else {
                 LiveText("vs", color = SportsLook.Dim, size = 20.sp, weight = FontWeight.Black)
             }
         }
-        val status = ev.status?.takeIf { it.isNotBlank() && ev.state != GameState.PRE }
+        val status = footer?.takeIf { it.isNotBlank() }
+            ?: ev.status?.takeIf { it.isNotBlank() && ev.state != GameState.PRE }
         if (status != null) {
             LiveText(
                 status,
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 10.dp).fillMaxWidth(0.5f),
-                color = ModernLook.TextSecondary, size = 12.sp,
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = if (fill) 5.dp else 10.dp).fillMaxWidth(if (fill) 0.8f else 0.5f),
+                color = ModernLook.TextSecondary, size = if (fill) 10.sp else 12.sp,
                 align = TextAlign.Center
             )
         }
